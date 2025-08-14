@@ -1,0 +1,485 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ENUMS: For data integrity, ensuring only specific values are allowed
+enum UserRole {
+  CLIENT
+  PARALEGAL
+  ASSOCIATE
+  PARTNER
+}
+
+enum CaseStatus {
+  OPEN
+  CLOSED
+  PENDING
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  DONE
+}
+
+// Time Tracking Enums
+enum TimeEntryStatus {
+  DRAFT
+  BILLABLE
+  NON_BILLABLE
+  BILLED
+  WRITTEN_OFF
+}
+
+enum InvoiceEntryStatus {
+  UNBILLED
+  BILLED
+  PAID
+}
+
+enum TimeEntryType {
+  PHONE_CALL
+  MEETING
+  EMAIL
+  RESEARCH
+  DRAFTING
+  COURT_APPEARANCE
+  OTHER
+}
+
+enum ExpenseType {
+  COURT_FEES
+  FILING_FEES
+  TRAVEL
+  MEALS
+  LODGING
+  EXPERT_WITNESS
+  COPYING
+  POSTAGE
+  OTHER
+}
+
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  PAID
+  PARTIALLY_PAID
+  OVERDUE
+  VOID
+}
+
+enum PaymentMethod {
+  CREDIT_CARD
+  BANK_TRANSFER
+  CHECK
+  CASH
+  OTHER
+}
+
+// Analytics Enums
+enum ReportType {
+  CASE_PROGRESS
+  FINANCIAL
+  PRODUCTIVITY
+  LEAD_CONVERSION
+  CUSTOM
+}
+
+enum ReportFrequency {
+  DAILY
+  WEEKLY
+  MONTHLY
+  QUARTERLY
+  YEARLY
+  CUSTOM
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  QUALIFIED
+  PROPOSAL_SENT
+  NEGOTIATION
+  WON
+  LOST
+  ARCHIVED
+}
+
+enum LeadSource {
+  WEBSITE
+  REFERRAL
+  SOCIAL_MEDIA
+  ADVERTISEMENT
+  EXISTING_CLIENT
+  OTHER
+}
+
+// MODELS: These will become tables in your database
+
+model User {
+  id           String        @id @default(cuid())
+  email        String        @unique
+  name         String?
+  passwordHash String
+  role         UserRole      @default(CLIENT)
+  phone        String?
+  address      String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  // Relationships
+  casesAsClient      Case[]                @relation("ClientCases")
+  tasksAssignedBy    Task[]                @relation("TasksAssignedBy")
+  tasksAssignedTo    Task[]                @relation("TasksAssignedTo")
+  documents          Document[]
+  caseAssignments    CaseAssignment[]
+  appointments       Appointment[]         @relation("AppointmentsCreated")
+  appointmentLinks   AppointmentAttendee[] @relation("UserAppointments")
+  timeEntries        TimeEntry[]
+  expenses           Expense[]
+  invoices           Invoice[]
+  payments           Payment[]
+  leads              Lead[]
+  savedReports       SavedReport[]
+  reportSchedules    ReportSchedule[]
+  staffProductivity  StaffProductivity[]
+  messagesSent       Message[]             @relation("MessageSender")
+  documentRequests   DocumentRequest[]     @relation("DocumentRequestCreator")
+  activeTimer        ActiveTimer?
+}
+
+model Case {
+  id              String        @id @default(cuid())
+  caseName        String
+  caseNumber      String?       @unique
+  description     String?
+  status          CaseStatus    @default(OPEN)
+  practiceArea    String?
+  openDate        DateTime      @default(now())
+  closeDate       DateTime?
+  estimatedValue  Float?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  // Relationships
+  client          User           @relation("ClientCases", fields: [clientId], references: [id])
+  clientId        String
+  tasks           Task[]
+  documents       Document[]
+  timeEntries     TimeEntry[]
+  expenses        Expense[]
+  invoices        Invoice[]
+  appointments    Appointment[]
+  caseOutcome     CaseOutcome?
+  caseAssignments CaseAssignment[]
+  convertedFrom   Lead?             @relation("LeadConversion")
+  messages        Message[]
+  documentRequests DocumentRequest[]
+  activeTimers    ActiveTimer[]
+}
+
+model Task {
+  id               String        @id @default(cuid())
+  title            String
+  description      String?
+  status           TaskStatus    @default(TODO)
+  priority         Int           @default(2)  // 1: High, 2: Medium, 3: Low
+  deadline         DateTime?
+  completedAt      DateTime?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  // Relationships
+  case             Case          @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  caseId           String
+  assignedBy       User          @relation("TasksAssignedBy", fields: [assignedById], references: [id])
+  assignedById     String
+  assignedTo       User          @relation("TasksAssignedTo", fields: [assignedToId], references: [id])
+  assignedToId     String
+  timeEntries      TimeEntry[]
+  activeTimers     ActiveTimer[]
+}
+
+model Document {
+  id               String    @id @default(cuid())
+  name             String    @default("Untitled")
+  description      String?
+  fileType         String?
+  fileSize         Int?
+  fileUrl          String    @default("")
+  uploadedById     String?
+  uploadedBy       User?     @relation(fields: [uploadedById], references: [id])
+  caseId           String
+  case             Case      @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @default(now()) @updatedAt
+}
+
+model Appointment {
+  id               String        @id @default(cuid())
+  title            String
+  description      String?
+  startTime        DateTime
+  endTime          DateTime
+  location         String?
+  isVirtual        Boolean       @default(false)
+  meetingUrl       String?
+  status           String        @default("scheduled")  // scheduled, completed, cancelled, rescheduled
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  // Relations
+  case             Case?                   @relation(fields: [caseId], references: [id])
+  caseId           String?
+  createdBy        User                    @relation("AppointmentsCreated", fields: [createdById], references: [id])
+  createdById      String
+  attendeeLinks    AppointmentAttendee[]   @relation("AppointmentAttendees")
+}
+
+// Time Tracking Models
+model TimeEntry {
+  id          String        @id @default(cuid())
+  case        Case?         @relation(fields: [caseId], references: [id])
+  caseId      String?
+  task        Task?         @relation(fields: [taskId], references: [id])
+  taskId      String?
+  user        User          @relation(fields: [userId], references: [id])
+  userId      String
+  description String
+  startTime   DateTime
+  endTime     DateTime?
+  duration    Int?          // in minutes
+  rate        Float?        // hourly rate at time of entry
+  status      TimeEntryStatus @default(DRAFT)
+  type        TimeEntryType
+  billable    Boolean       @default(true)
+  invoiceStatus InvoiceEntryStatus @default(UNBILLED)
+  billableAmount Float?      // calculated: duration * rate
+  invoice     Invoice?      @relation(fields: [invoiceId], references: [id])
+  invoiceId   String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+}
+
+model Expense {
+  id          String        @id @default(cuid())
+  case        Case          @relation(fields: [caseId], references: [id])
+  caseId      String
+  user        User          @relation(fields: [userId], references: [id])
+  userId      String
+  description String
+  amount      Float
+  type        ExpenseType
+  date        DateTime
+  billable    Boolean       @default(true)
+  status      TimeEntryStatus @default(DRAFT)
+  invoice     Invoice?      @relation(fields: [invoiceId], references: [id])
+  invoiceId   String?
+  receiptUrl  String?       // URL to uploaded receipt
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+}
+
+model Invoice {
+  id              String      @id @default(cuid())
+  invoiceNumber   String      @unique
+  case            Case        @relation(fields: [caseId], references: [id])
+  caseId          String
+  client          User        @relation(fields: [clientId], references: [id])
+  clientId        String
+  issueDate       DateTime    @default(now())
+  dueDate         DateTime
+  status          InvoiceStatus @default(DRAFT)
+  subtotal        Float
+  tax             Float
+  total           Float
+  notes           String?
+  timeEntries     TimeEntry[]
+  expenses        Expense[]
+  payments        Payment[]
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+}
+
+model Payment {
+  id              String      @id @default(cuid())
+  invoice         Invoice     @relation(fields: [invoiceId], references: [id])
+  invoiceId       String
+  amount          Float
+  paymentDate     DateTime    @default(now())
+  method          PaymentMethod
+  reference       String?     // Check number, transaction ID, etc.
+  notes           String?
+  recordedBy      User        @relation(fields: [recordedById], references: [id])
+  recordedById    String
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+}
+
+// Analytics Models
+model SavedReport {
+  id          String        @id @default(cuid())
+  name        String
+  description String?
+  type        ReportType
+  filters     Json?         // JSON object containing filter criteria
+  createdBy   User          @relation(fields: [createdById], references: [id])
+  createdById  String
+  isPublic    Boolean       @default(false)
+  schedules   ReportSchedule[] @relation("SavedReportSchedules")
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+}
+
+model ReportSchedule {
+  id          String        @id @default(cuid())
+  report      SavedReport   @relation("SavedReportSchedules", fields: [reportId], references: [id])
+  reportId    String
+  frequency   ReportFrequency
+  dayOfWeek   Int?          // 0-6 (Sunday-Saturday)
+  dayOfMonth  Int?          // 1-31
+  timeOfDay   String?       // HH:MM in 24h format
+  recipients  String[]      // Array of email addresses
+  lastRunAt   DateTime?
+  nextRunAt   DateTime?
+  isActive    Boolean       @default(true)
+  createdBy   User          @relation(fields: [createdById], references: [id])
+  createdById  String
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+}
+
+model Lead {
+  id              String      @id @default(cuid())
+  firstName       String
+  lastName        String
+  email           String
+  phone           String?
+  company         String?
+  position        String?
+  source          LeadSource
+  status          LeadStatus  @default(NEW)
+  practiceArea    String?     // Practice area the lead is interested in
+  description     String?
+  assignedTo      User?       @relation(fields: [assignedToId], references: [id])
+  assignedToId    String?
+  value           Float?      // Estimated case value
+  probability     Int?        // 0-100%
+  expectedCloseDate DateTime?
+  notes           String?
+  convertedToCase Case?       @relation("LeadConversion", fields: [convertedToCaseId], references: [id])
+  convertedToCaseId String?   @unique
+  convertedAt     DateTime?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+}
+
+model CaseOutcome {
+  id              String      @id @default(cuid())
+  case            Case        @relation(fields: [caseId], references: [id])
+  caseId          String      @unique
+  status          String      // e.g., "Won", "Settled", "Lost", "Dismissed"
+  outcomeDate     DateTime
+  amountAwarded   Float?
+  amountRecovered Float?
+  feesAwarded     Float?
+  notes           String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+}
+
+model StaffProductivity {
+  id              String      @id @default(cuid())
+  user            User        @relation(fields: [userId], references: [id])
+  userId          String
+  periodStart     DateTime    // Start of the reporting period
+  periodEnd       DateTime    // End of the reporting period
+  billableHours   Float       // Total billable hours
+  nonBillableHours Float      // Total non-billable hours
+  casesWorkedOn   Int         // Number of cases worked on
+  tasksCompleted  Int         // Number of tasks completed
+  tasksOverdue    Int         // Number of tasks completed after deadline
+  revenueGenerated Float      // Revenue generated from time entries
+  expensesIncurred Float      // Expenses incurred
+  utilizationRate Float      // Billable hours / Total working hours
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  @@unique([userId, periodStart, periodEnd])
+}
+
+// Junction Tables
+model CaseAssignment {
+  id        String   @id @default(cuid())
+  case      Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  caseId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  role      String   @default("unassigned") // e.g., "lead_attorney", "paralegal", "associate"
+  assignedAt DateTime @default(now())
+
+  @@unique([caseId, userId])
+}
+
+model AppointmentAttendee {
+  id            String      @id @default(cuid())
+  appointment   Appointment @relation("AppointmentAttendees", fields: [appointmentId], references: [id], onDelete: Cascade)
+  appointmentId String
+  user          User        @relation("UserAppointments", fields: [userId], references: [id], onDelete: Cascade)
+  userId        String
+  status        String      @default("accepted")  // accepted, declined, tentative, none
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @default(now()) @updatedAt
+
+  @@unique([appointmentId, userId])
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  content   String
+  case      Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  caseId    String
+  sender    User     @relation("MessageSender", fields: [senderId], references: [id])
+  senderId  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model DocumentRequest {
+  id            String    @id @default(cuid())
+  title         String
+  description   String
+  status        String    @default("PENDING") // PENDING, RESPONDED, COMPLETED
+  response      String?
+  case          Case      @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  caseId        String
+  requestedBy   User      @relation("DocumentRequestCreator", fields: [requestedById], references: [id])
+  requestedById String
+  respondedAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model ActiveTimer {
+  id          String        @id @default(cuid())
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String        @unique
+  case        Case?         @relation(fields: [caseId], references: [id])
+  caseId      String?
+  task        Task?         @relation(fields: [taskId], references: [id])
+  taskId      String?
+  description String
+  type        TimeEntryType
+  rate        Float?
+  startTime   DateTime      @default(now())
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+}

@@ -1,0 +1,12 @@
+HTTP/1.1 500 Internal Server Error
+X-Powered-By: Express
+Content-Type: application/json; charset=utf-8
+Content-Length: 52
+ETag: W/"34-rlKccw1E+/fV8niQk4oFitDfPro"
+Date: Mon, 11 Aug 2025 17:14:24 GMT
+Connection: close
+
+{
+  "statusCode": 500,
+  "message": "Internal server error"
+}

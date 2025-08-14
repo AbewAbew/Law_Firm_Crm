@@ -1,0 +1,125 @@
+// Time tracking and billing models
+
+enum TimeEntryStatus {
+  DRAFT
+  BILLABLE
+  NON_BILLABLE
+  BILLED
+  WRITTEN_OFF
+}
+
+enum TimeEntryType {
+  PHONE_CALL
+  MEETING
+  EMAIL
+  RESEARCH
+  DRAFTING
+  COURT_APPEARANCE
+  OTHER
+}
+
+model TimeEntry {
+  id          String        @id @default(cuid())
+  case        Case?         @relation(fields: [caseId], references: [id])
+  caseId      String?
+  task        Task?         @relation(fields: [taskId], references: [id])
+  taskId      String?
+  user        User          @relation(fields: [userId], references: [id])
+  userId      String
+  description String
+  startTime   DateTime
+  endTime     DateTime?
+  duration    Int?          // in minutes
+  rate        Float?        // hourly rate at time of entry
+  status      TimeEntryStatus @default(DRAFT)
+  type        TimeEntryType
+  billable    Boolean       @default(true)
+  invoice     Invoice?      @relation(fields: [invoiceId], references: [id])
+  invoiceId   String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+}
+
+enum ExpenseType {
+  COURT_FEES
+  FILING_FEES
+  TRAVEL
+  MEALS
+  LODGING
+  EXPERT_WITNESS
+  COPYING
+  POSTAGE
+  OTHER
+}
+
+model Expense {
+  id          String      @id @default(cuid())
+  case        Case        @relation(fields: [caseId], references: [id])
+  caseId      String
+  user        User        @relation(fields: [userId], references: [id])
+  userId      String
+  description String
+  amount      Float
+  type        ExpenseType
+  date        DateTime
+  billable    Boolean     @default(true)
+  status      TimeEntryStatus @default(DRAFT)
+  invoice     Invoice?    @relation(fields: [invoiceId], references: [id])
+  invoiceId   String?
+  receiptUrl  String?     // URL to uploaded receipt
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+}
+
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  PAID
+  PARTIALLY_PAID
+  OVERDUE
+  VOID
+}
+
+model Invoice {
+  id              String      @id @default(cuid())
+  invoiceNumber   String      @unique
+  case            Case        @relation(fields: [caseId], references: [id])
+  caseId          String
+  client          User        @relation(fields: [clientId], references: [id])
+  clientId        String
+  issueDate       DateTime    @default(now())
+  dueDate         DateTime
+  status          InvoiceStatus @default(DRAFT)
+  subtotal        Float
+  tax             Float
+  total           Float
+  notes           String?
+  timeEntries     TimeEntry[]
+  expenses        Expense[]
+  payments        Payment[]
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+}
+
+enum PaymentMethod {
+  CREDIT_CARD
+  BANK_TRANSFER
+  CHECK
+  CASH
+  OTHER
+}
+
+model Payment {
+  id              String      @id @default(cuid())
+  invoice         Invoice     @relation(fields: [invoiceId], references: [id])
+  invoiceId       String
+  amount          Float
+  paymentDate     DateTime    @default(now())
+  method          PaymentMethod
+  reference       String?     // Check number, transaction ID, etc.
+  notes           String?
+  recordedBy      User        @relation(fields: [recordedById], references: [id])
+  recordedById    String
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+}

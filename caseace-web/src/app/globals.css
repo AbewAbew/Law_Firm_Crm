@@ -1,0 +1,79 @@
+/* src/app/globals.css */
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+}
+
+body {
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%) !important;
+  background-attachment: fixed;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 196, 159, 0.3);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 196, 159, 0.5);
+}
+
+/* Glass morphism utility classes */
+.glass {
+  background: rgba(255, 255, 255, 0.05) !important;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 16px !important;
+}
+
+.glass-hover {
+  transition: all 0.3s ease;
+}
+
+.glass-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 30px rgba(0, 196, 159, 0.1);
+}
+
+/* Text selection */
+::selection {
+  background: rgba(0, 196, 159, 0.3);
+  color: #ffffff;
+}
+
+/* Focus outline */
+*:focus {
+  outline: 2px solid rgba(0, 196, 159, 0.5);
+  outline-offset: 2px;
+}
+
+/* Loading animations */
+@keyframes shimmer {
+  0% {
+    background-position: -200px 0;
+  }
+  100% {
+    background-position: calc(200px + 100%) 0;
+  }
+}
+
+.shimmer {
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+  background-size: 200px 100%;
+  animation: shimmer 1.5s infinite;
+}

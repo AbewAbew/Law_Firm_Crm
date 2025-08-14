@@ -1,0 +1,131 @@
+// Analytics and reporting models
+
+enum ReportType {
+  CASE_PROGRESS
+  FINANCIAL
+  PRODUCTIVITY
+  LEAD_CONVERSION
+  CUSTOM
+}
+
+enum ReportFrequency {
+  DAILY
+  WEEKLY
+  MONTHLY
+  QUARTERLY
+  YEARLY
+  CUSTOM
+}
+
+model SavedReport {
+  id          String        @id @default(cuid())
+  name        String
+  description String?
+  type        ReportType
+  filters     Json          // JSON object containing filter criteria
+  createdBy   User          @relation(fields: [createdById], references: [id])
+  createdById  String
+  isPublic    Boolean       @default(false)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+}
+
+model ReportSchedule {
+  id          String        @id @default(cuid())
+  report      SavedReport   @relation(fields: [reportId], references: [id])
+  reportId    String
+  frequency   ReportFrequency
+  dayOfWeek   Int?          // 0-6 (Sunday-Saturday)
+  dayOfMonth  Int?          // 1-31
+  timeOfDay   String?       // HH:MM in 24h format
+  recipients  String[]      // Array of email addresses
+  lastRunAt   DateTime?
+  nextRunAt   DateTime?
+  isActive    Boolean       @default(true)
+  createdBy   User          @relation(fields: [createdById], references: [id])
+  createdById  String
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+}
+
+// Lead tracking for conversion metrics
+enum LeadStatus {
+  NEW
+  CONTACTED
+  QUALIFIED
+  PROPOSAL_SENT
+  NEGOTIATION
+  WON
+  LOST
+  ARCHIVED
+}
+
+enum LeadSource {
+  WEBSITE
+  REFERRAL
+  SOCIAL_MEDIA
+  ADVERTISEMENT
+  EXISTING_CLIENT
+  OTHER
+}
+
+model Lead {
+  id              String      @id @default(cuid())
+  firstName       String
+  lastName        String
+  email           String
+  phone           String?
+  company         String?
+  position        String?
+  source          LeadSource
+  status          LeadStatus  @default(NEW)
+  practiceArea    String?     // Practice area the lead is interested in
+  description     String?
+  assignedTo      User?       @relation(fields: [assignedToId], references: [id])
+  assignedToId    String?
+  value           Float?      // Estimated case value
+  probability     Int?        // 0-100%
+  expectedCloseDate DateTime?
+  notes           String?
+  convertedToCase Case?       @relation(fields: [convertedToCaseId], references: [id])
+  convertedToCaseId String?
+  convertedAt     DateTime?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+}
+
+// Case outcome tracking
+model CaseOutcome {
+  id              String      @id @default(cuid())
+  case            Case        @relation(fields: [caseId], references: [id])
+  caseId          String      @unique
+  status          String      // e.g., "Won", "Settled", "Lost", "Dismissed"
+  outcomeDate     DateTime
+  amountAwarded   Float?
+  amountRecovered Float?
+  feesAwarded     Float?
+  notes           String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+}
+
+// Staff productivity metrics (denormalized for performance)
+model StaffProductivity {
+  id              String      @id @default(cuid())
+  user            User        @relation(fields: [userId], references: [id])
+  userId          String      @unique
+  periodStart     DateTime    // Start of the reporting period
+  periodEnd       DateTime    // End of the reporting period
+  billableHours   Float       // Total billable hours
+  nonBillableHours Float      // Total non-billable hours
+  casesWorkedOn   Int         // Number of cases worked on
+  tasksCompleted  Int         // Number of tasks completed
+  tasksOverdue    Int         // Number of tasks completed after deadline
+  revenueGenerated Float      // Revenue generated from time entries
+  expensesIncurred Float      // Expenses incurred
+  utilizationRate Float      // Billable hours / Total working hours
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  @@unique([userId, periodStart, periodEnd])
+}
