@@ -27,4 +27,14 @@ export class AnalyticsController {
   getDashboardMetrics() {
     return this.analyticsService.getDashboardMetrics();
   }
+
+  @Get('recent-cases')
+  getRecentCases(@Query('limit') limit?: string) {
+    return this.analyticsService.getRecentCases(limit ? parseInt(limit) : 10);
+  }
+
+  @Get('recent-time-entries')
+  getRecentTimeEntries(@Query('limit') limit?: string) {
+    return this.analyticsService.getRecentTimeEntries(limit ? parseInt(limit) : 20);
+  }
 }

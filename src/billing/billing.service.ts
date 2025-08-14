@@ -171,14 +171,34 @@ export class BillingService {
 
   private async generateInvoiceNumber(): Promise<string> {
     const year = new Date().getFullYear();
-    const count = await this.prisma.invoice.count({
-      where: {
-        invoiceNumber: {
-          startsWith: `INV-${year}-`,
+    let attempts = 0;
+    const maxAttempts = 10;
+    
+    while (attempts < maxAttempts) {
+      const count = await this.prisma.invoice.count({
+        where: {
+          invoiceNumber: {
+            startsWith: `INV-${year}-`,
+          },
         },
-      },
-    });
-    return `INV-${year}-${String(count + 1).padStart(4, '0')}`;
+      });
+      
+      const invoiceNumber = `INV-${year}-${String(count + 1 + attempts).padStart(4, '0')}`;
+      
+      // Check if this number already exists
+      const existing = await this.prisma.invoice.findUnique({
+        where: { invoiceNumber },
+      });
+      
+      if (!existing) {
+        return invoiceNumber;
+      }
+      
+      attempts++;
+    }
+    
+    // Fallback with timestamp if all attempts fail
+    return `INV-${year}-${Date.now().toString().slice(-4)}`;
   }
 
   // Automated Draft Invoice Methods
@@ -206,8 +226,15 @@ export class BillingService {
       throw new Error('No unbilled time entries found');
     }
 
+    // Filter out entries without proper case-client associations
+    const validEntries = timeEntries.filter(entry => entry.case?.client?.id);
+    
+    if (validEntries.length === 0) {
+      throw new Error('No valid time entries found. All entries must be associated with a case that has a client.');
+    }
+
     // Determine client and case from time entries if not provided
-    const firstEntry = timeEntries[0];
+    const firstEntry = validEntries[0];
     const finalClientId = clientId || firstEntry.case?.clientId;
     const finalCaseId = caseId || firstEntry.caseId;
 
@@ -219,33 +246,73 @@ export class BillingService {
       throw new Error('Case information required. Time entries must be associated with a case.');
     }
 
-    // Calculate totals
-    const subtotal = timeEntries.reduce((sum, entry) => sum + (entry.billableAmount || 0), 0);
-    const tax = subtotal * 0.1; // 10% tax
-    const total = subtotal + tax;
+    // Check for existing DRAFT invoice for this case/client
+    const existingDraftInvoice = await this.prisma.invoice.findFirst({
+      where: {
+        caseId: finalCaseId,
+        clientId: finalClientId,
+        status: InvoiceStatus.DRAFT,
+      },
+      include: {
+        timeEntries: true,
+      },
+    });
 
-    // Generate invoice number
+    if (existingDraftInvoice) {
+      // Consolidate into existing draft invoice
+      const newSubtotal = validEntries.reduce((sum, entry) => sum + (entry.billableAmount || 0), 0);
+      const updatedSubtotal = existingDraftInvoice.subtotal + newSubtotal;
+      const updatedTax = updatedSubtotal * 0.1;
+      const updatedTotal = updatedSubtotal + updatedTax;
+      const totalEntries = existingDraftInvoice.timeEntries.length + validEntries.length;
+
+      // Update existing invoice totals
+      await this.prisma.invoice.update({
+        where: { id: existingDraftInvoice.id },
+        data: {
+          subtotal: updatedSubtotal,
+          tax: updatedTax,
+          total: updatedTotal,
+          notes: `Draft invoice consolidated from ${totalEntries} time entries`,
+          updatedAt: new Date(),
+        },
+      });
+
+      // Link new time entries to existing invoice
+      await this.prisma.timeEntry.updateMany({
+        where: { id: { in: validEntries.map(e => e.id) } },
+        data: { 
+          invoiceId: existingDraftInvoice.id,
+          invoiceStatus: InvoiceEntryStatus.BILLED,
+        },
+      });
+
+      return this.findInvoice(existingDraftInvoice.id);
+    }
+
+    // No existing draft found, create new invoice
+    const subtotal = validEntries.reduce((sum, entry) => sum + (entry.billableAmount || 0), 0);
+    const tax = subtotal * 0.1;
+    const total = subtotal + tax;
     const invoiceNumber = await this.generateInvoiceNumber();
     
-    // Create draft invoice
     const invoice = await this.prisma.invoice.create({
       data: {
         invoiceNumber,
         caseId: finalCaseId,
         clientId: finalClientId,
         issueDate: new Date(),
-        dueDate: dueDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
+        dueDate: dueDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
         status: InvoiceStatus.DRAFT,
         subtotal,
         tax,
         total,
-        notes: `Draft invoice generated from ${timeEntries.length} time entries`,
+        notes: `Draft invoice generated from ${validEntries.length} time entries`,
       },
     });
 
-    // Link time entries to invoice and update status
     await this.prisma.timeEntry.updateMany({
-      where: { id: { in: timeEntryIds } },
+      where: { id: { in: validEntries.map(e => e.id) } },
       data: { 
         invoiceId: invoice.id,
         invoiceStatus: InvoiceEntryStatus.BILLED,
@@ -325,6 +392,82 @@ export class BillingService {
     return {
       created: createdInvoices.length,
       invoices: createdInvoices,
+    };
+  }
+
+  async consolidateExistingDraftInvoices(caseId?: string) {
+    const where: any = { status: InvoiceStatus.DRAFT };
+    if (caseId) {
+      where.caseId = caseId;
+    }
+
+    const draftInvoices = await this.prisma.invoice.findMany({
+      where,
+      include: {
+        timeEntries: true,
+        case: true,
+        client: true,
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    const consolidatedInvoices: any[] = [];
+    const processedCases = new Set<string>();
+
+    for (const invoice of draftInvoices) {
+      const caseClientKey = `${invoice.caseId}-${invoice.clientId}`;
+      
+      if (processedCases.has(caseClientKey)) {
+        continue;
+      }
+
+      // Find all draft invoices for this case/client
+      const duplicateInvoices = draftInvoices.filter(
+        inv => inv.caseId === invoice.caseId && 
+               inv.clientId === invoice.clientId && 
+               inv.id !== invoice.id
+      );
+
+      if (duplicateInvoices.length > 0) {
+        // Consolidate all time entries into the first invoice
+        const allTimeEntryIds = duplicateInvoices.flatMap(inv => inv.timeEntries.map(te => te.id));
+        const totalSubtotal = duplicateInvoices.reduce((sum, inv) => sum + inv.subtotal, invoice.subtotal);
+        const totalTax = totalSubtotal * 0.1;
+        const totalAmount = totalSubtotal + totalTax;
+        const totalEntries = invoice.timeEntries.length + allTimeEntryIds.length;
+
+        // Update main invoice
+        await this.prisma.invoice.update({
+          where: { id: invoice.id },
+          data: {
+            subtotal: totalSubtotal,
+            tax: totalTax,
+            total: totalAmount,
+            notes: `Consolidated draft invoice from ${totalEntries} time entries`,
+            updatedAt: new Date(),
+          },
+        });
+
+        // Move time entries to main invoice
+        await this.prisma.timeEntry.updateMany({
+          where: { id: { in: allTimeEntryIds } },
+          data: { invoiceId: invoice.id },
+        });
+
+        // Delete duplicate invoices
+        await this.prisma.invoice.deleteMany({
+          where: { id: { in: duplicateInvoices.map(inv => inv.id) } },
+        });
+
+        consolidatedInvoices.push(await this.findInvoice(invoice.id));
+      }
+
+      processedCases.add(caseClientKey);
+    }
+
+    return {
+      consolidated: consolidatedInvoices.length,
+      invoices: consolidatedInvoices,
     };
   }
 }

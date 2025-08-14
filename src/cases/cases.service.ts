@@ -12,6 +12,8 @@ import * as bcrypt from 'bcrypt';
 interface AuthenticatedUser {
   /** Unique identifier for the user */
   userId: string;
+  /** Alternative user identifier from JWT */
+  sub?: string;
   /** User's role determining access permissions */
   role: UserRole;
 }
@@ -46,15 +48,21 @@ export class CasesService {
       const validCaseData = {
         caseName: caseData.caseName,
         description: caseData.description,
+        status: caseData.status,
+        practiceArea: caseData.practiceArea,
         caseNumber,
       };
       
       const newCase = await prisma.case.create({
         data: { 
           ...validCaseData,
-          client: { connect: { id: finalClientId } } 
+          client: { connect: { id: finalClientId } },
+          createdBy: { connect: { id: user?.userId || user?.sub } }
         },
-        include: { client: { select: { id: true, name: true, email: true } } },
+        include: { 
+          client: { select: { id: true, name: true, email: true } },
+          createdBy: { select: { id: true, name: true, role: true } }
+        },
       });
       
       if (assignedUserIds?.length) {
@@ -305,6 +313,50 @@ export class CasesService {
       const updatedCase = await this.prisma.case.update({
         where: { id },
         data: updateCaseDto,
+      });
+      return updatedCase;
+    } catch (error: any) {
+      if (error.code === 'P2025') {
+        throw new NotFoundException(`Case with ID "${id}" not found.`);
+      }
+      throw error;
+    }
+  }
+
+  async closeCase(id: string, user: AuthenticatedUser) {
+    if (typeof id !== 'string' || !isCuid(id)) {
+      throw new BadRequestException('Invalid case ID format');
+    }
+    
+    // First check if case exists and get creator info
+    const existingCase = await this.prisma.case.findUnique({
+      where: { id },
+      include: {
+        createdBy: { select: { id: true, name: true, role: true } },
+      },
+    });
+    
+    if (!existingCase) {
+      throw new NotFoundException(`Case with ID "${id}" not found.`);
+    }
+    
+    // Check if user is the case creator
+    const userId = user.userId || user.sub;
+    if (existingCase.createdById !== userId) {
+      throw new BadRequestException('Only the case creator can close this case.');
+    }
+    
+    try {
+      const updatedCase = await this.prisma.case.update({
+        where: { id },
+        data: {
+          status: 'CLOSED',
+          closeDate: new Date(),
+        },
+        include: {
+          client: { select: { id: true, name: true, email: true } },
+          createdBy: { select: { id: true, name: true, role: true } },
+        },
       });
       return updatedCase;
     } catch (error: any) {

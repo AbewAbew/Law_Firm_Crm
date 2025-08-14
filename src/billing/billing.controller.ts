@@ -87,4 +87,11 @@ export class BillingController {
   ) {
     return this.billingService.createBulkDraftInvoices(data.period);
   }
+
+  @Post('consolidate-drafts')
+  consolidateExistingDraftInvoices(
+    @Body() data: { caseId?: string },
+  ) {
+    return this.billingService.consolidateExistingDraftInvoices(data.caseId);
+  }
 }

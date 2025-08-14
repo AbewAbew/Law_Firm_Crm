@@ -22,6 +22,7 @@ import {
   ListItem,
   ListItemText,
   ListItemIcon,
+  Dialog,
 } from '@mui/material';
 import {
   Add,
@@ -32,6 +33,7 @@ import {
   Warning,
   CheckCircle,
   Schedule,
+  Close as CloseIcon,
 } from '@mui/icons-material';
 import { useRouter } from 'next/navigation';
 import api from '@/lib/axios';
@@ -58,7 +60,8 @@ interface RecentTimeEntry {
   id: string;
   description: string;
   duration: number;
-  case: { caseName: string };
+  case: { caseName: string; client: { name: string } };
+  user: { name: string; role: string };
   startTime: string;
 }
 
@@ -82,6 +85,8 @@ export default function DashboardPage() {
   const [recentCases, setRecentCases] = useState<RecentCase[]>([]);
   const [recentTimeEntries, setRecentTimeEntries] = useState<RecentTimeEntry[]>([]);
   const [upcomingAppointments, setUpcomingAppointments] = useState<UpcomingAppointment[]>([]);
+  const [allTimeEntries, setAllTimeEntries] = useState<RecentTimeEntry[]>([]);
+  const [timeEntriesModalOpen, setTimeEntriesModalOpen] = useState(false);
 
   useEffect(() => {
     fetchDashboardData();
@@ -101,8 +106,8 @@ export default function DashboardPage() {
 
   const fetchRecentCases = async () => {
     try {
-      const response = await api.get('/cases');
-      setRecentCases(response.data.slice(0, 5));
+      const response = await api.get('/analytics/recent-cases?limit=5');
+      setRecentCases(response.data);
     } catch (error) {
       console.error('Failed to fetch recent cases');
     }
@@ -110,10 +115,21 @@ export default function DashboardPage() {
 
   const fetchRecentTimeEntries = async () => {
     try {
-      const response = await api.get('/time-tracking');
-      setRecentTimeEntries(response.data.slice(0, 5));
+      const response = await api.get('/analytics/recent-time-entries?limit=5');
+      setRecentTimeEntries(response.data);
     } catch (error) {
       console.error('Failed to fetch recent time entries');
+    }
+  };
+
+  const fetchAllTimeEntries = async () => {
+    try {
+      const response = await api.get('/analytics/recent-time-entries?limit=100');
+      setAllTimeEntries(response.data);
+      setTimeEntriesModalOpen(true);
+    } catch (error) {
+      console.error('Failed to fetch all time entries');
+      toast.error('Failed to load time entries');
     }
   };
 
@@ -298,7 +314,7 @@ export default function DashboardPage() {
                   </ListItemIcon>
                   <ListItemText
                     primary={entry.description}
-                    secondary={`${entry.case?.caseName} - ${formatDuration(entry.duration || 0)}`}
+                    secondary={`${entry.user?.name} (${entry.user?.role}) - ${entry.case?.caseName} - ${formatDuration(entry.duration || 0)}`}
                   />
                 </ListItem>
               ))}
@@ -306,7 +322,7 @@ export default function DashboardPage() {
             <Button
               fullWidth
               sx={{ mt: 2 }}
-              onClick={() => router.push('/time-tracking')}
+              onClick={fetchAllTimeEntries}
             >
               View All Time Entries
             </Button>
@@ -339,6 +355,69 @@ export default function DashboardPage() {
           </Paper>
         </Grid>
       </Grid>
+
+      {/* All Time Entries Modal */}
+      <Dialog
+        open={timeEntriesModalOpen}
+        onClose={() => setTimeEntriesModalOpen(false)}
+        maxWidth="md"
+        fullWidth
+        PaperProps={{
+          sx: { height: '80vh' }
+        }}
+      >
+        <Box sx={{ p: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: 1, borderColor: 'divider' }}>
+          <Typography variant="h6">All Time Entries</Typography>
+          <IconButton onClick={() => setTimeEntriesModalOpen(false)}>
+            <CloseIcon />
+          </IconButton>
+        </Box>
+        <Box sx={{ flex: 1, overflow: 'auto', p: 2 }}>
+          <List>
+            {allTimeEntries.map((entry) => (
+              <ListItem key={entry.id} divider sx={{ py: 2 }}>
+                <ListItemIcon>
+                  <AccessTime color="primary" />
+                </ListItemIcon>
+                <ListItemText
+                  primary={
+                    <Box>
+                      <Typography variant="subtitle1" component="div">
+                        {entry.description}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        {entry.user?.name} ({entry.user?.role}) • {entry.case?.caseName}
+                      </Typography>
+                    </Box>
+                  }
+                  secondary={
+                    <Box sx={{ mt: 1 }}>
+                      <Chip
+                        label={formatDuration(entry.duration || 0)}
+                        size="small"
+                        color="primary"
+                        variant="outlined"
+                        sx={{ mr: 1 }}
+                      />
+                      <Typography variant="caption" color="text.secondary">
+                        {new Date(entry.startTime).toLocaleString()}
+                      </Typography>
+                    </Box>
+                  }
+                />
+              </ListItem>
+            ))}
+            {allTimeEntries.length === 0 && (
+              <ListItem>
+                <ListItemText
+                  primary="No time entries found"
+                  secondary="No time entries have been logged recently"
+                />
+              </ListItem>
+            )}
+          </List>
+        </Box>
+      </Dialog>
       </Box>
     </RoleGuard>
   );

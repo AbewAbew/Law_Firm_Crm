@@ -17,12 +17,13 @@ import {
   MenuItem,
   Grid,
 } from '@mui/material';
-import { Add } from '@mui/icons-material';
+import { Add, Delete } from '@mui/icons-material';
 import {
   DndContext,
   DragEndEvent,
   DragOverlay,
   DragStartEvent,
+  DragOverEvent,
   PointerSensor,
   useSensor,
   useSensors,
@@ -61,7 +62,7 @@ interface User {
   role: string;
 }
 
-function TaskCard({ task, canDrag, currentUser }: { task: Task; canDrag: boolean; currentUser: any }) {
+function TaskCard({ task, canDrag, currentUser, onDelete }: { task: Task; canDrag: boolean; currentUser: any; onDelete?: (taskId: string) => void }) {
   const {
     attributes,
     listeners,
@@ -130,6 +131,22 @@ function TaskCard({ task, canDrag, currentUser }: { task: Task; canDrag: boolean
             Assigned by: {task.assignedBy?.name || 'Unknown'}
           </Typography>
         )}
+        {task.status === 'DONE' && currentUser?.role === 'PARTNER' && onDelete && (
+          <Box sx={{ mt: 1, display: 'flex', justifyContent: 'flex-end' }}>
+            <Button
+              size="small"
+              color="error"
+              startIcon={<Delete />}
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete(task.id);
+              }}
+              sx={{ fontSize: '0.75rem' }}
+            >
+              Delete
+            </Button>
+          </Box>
+        )}
       </CardContent>
     </Card>
   );
@@ -140,33 +157,60 @@ function KanbanColumn({
   status, 
   tasks, 
   color,
-  currentUser 
+  currentUser,
+  onDeleteTask
 }: { 
   title: string; 
   status: string; 
   tasks: Task[]; 
   color: string;
   currentUser: any;
+  onDeleteTask?: (taskId: string) => void;
 }) {
-  const { setNodeRef } = useDroppable({ id: status });
+  const { setNodeRef, isOver: isOverDroppable } = useDroppable({ id: status });
   
   return (
-    <Paper ref={setNodeRef} sx={{ p: 2, minHeight: 400, bgcolor: `${color}.50` }}>
+    <Paper 
+      ref={setNodeRef} 
+      sx={{ 
+        p: 2, 
+        minHeight: 400, 
+        bgcolor: isOverDroppable ? `${color}.100` : `${color}.50`,
+        border: isOverDroppable ? `2px dashed ${color === 'blue' ? '#1976d2' : color === 'orange' ? '#ed6c02' : '#2e7d32'}` : 'none',
+        transition: 'all 0.2s ease-in-out'
+      }}
+    >
       <Typography variant="h6" sx={{ mb: 2, textAlign: 'center', color: `${color}.800` }}>
         {title} ({tasks.length})
       </Typography>
-      <SortableContext items={tasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
-        {tasks.map((task) => {
-          const canDrag = currentUser && (
-            task.assignedTo.id === currentUser.id || 
-            task.assignedTo.id === currentUser.sub
-          );
-          console.log('Task:', task.title, 'AssignedTo:', task.assignedTo.id, 'CurrentUser:', currentUser?.id || currentUser?.sub, 'CanDrag:', canDrag);
-          return (
-            <TaskCard key={task.id} task={task} canDrag={canDrag} currentUser={currentUser} />
-          );
-        })}
-      </SortableContext>
+      <Box sx={{ minHeight: 300 }}>
+        <SortableContext items={tasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
+          {tasks.map((task) => {
+            const canDrag = currentUser && (
+              task.assignedTo.id === currentUser.id || 
+              task.assignedTo.id === currentUser.sub
+            );
+            return (
+              <TaskCard key={task.id} task={task} canDrag={canDrag} currentUser={currentUser} onDelete={onDeleteTask} />
+            );
+          })}
+        </SortableContext>
+        {/* Empty drop zone when no tasks */}
+        {tasks.length === 0 && (
+          <Box 
+            sx={{ 
+              height: 200, 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center',
+              color: 'text.secondary',
+              fontStyle: 'italic'
+            }}
+          >
+            Drop tasks here
+          </Box>
+        )}
+      </Box>
     </Paper>
   );
 }
@@ -248,17 +292,42 @@ export default function TasksPage() {
     setActiveTask(task || null);
   };
 
+  const handleDragOver = (event: DragOverEvent) => {
+    // This helps with better drop zone detection
+  };
+
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
     setActiveTask(null);
 
-    if (!over) return;
+    if (!over) {
+      toast.error('Please drop the task in a valid column');
+      return;
+    }
 
     const taskId = active.id as string;
-    const newStatus = over.id as 'TODO' | 'WORKING' | 'DONE';
+    let newStatus = over.id as string;
+    
+    // Handle dropping on task cards - get the column status instead
+    if (!['TODO', 'WORKING', 'DONE'].includes(newStatus)) {
+      const droppedTask = tasks.find(t => t.id === newStatus);
+      if (droppedTask) {
+        newStatus = droppedTask.status;
+      } else {
+        toast.error('Invalid drop target');
+        return;
+      }
+    }
 
     const task = tasks.find(t => t.id === taskId);
-    if (!task || task.status === newStatus) return;
+    if (!task) {
+      toast.error('Task not found');
+      return;
+    }
+
+    if (task.status === newStatus) {
+      return; // No change needed
+    }
 
     // Check permissions - only assigned user can move tasks
     const userId = currentUser?.id || currentUser?.sub;
@@ -269,7 +338,7 @@ export default function TasksPage() {
 
     // Optimistically update UI
     setTasks(prev => prev.map(t => 
-      t.id === taskId ? { ...t, status: newStatus } : t
+      t.id === taskId ? { ...t, status: newStatus as 'TODO' | 'WORKING' | 'DONE' } : t
     ));
 
     try {
@@ -312,6 +381,20 @@ export default function TasksPage() {
     }
   };
 
+  const handleDeleteTask = async (taskId: string) => {
+    if (!window.confirm('Are you sure you want to delete this completed task?')) {
+      return;
+    }
+
+    try {
+      await api.delete(`/tasks/${taskId}`);
+      toast.success('Task deleted successfully');
+      setTasks(prev => prev.filter(t => t.id !== taskId));
+    } catch (error) {
+      toast.error('Failed to delete task');
+    }
+  };
+
   const todoTasks = tasks.filter(t => t.status === 'TODO');
   const workingTasks = tasks.filter(t => t.status === 'WORKING' || t.status === 'IN_PROGRESS');
   const doneTasks = tasks.filter(t => t.status === 'DONE');
@@ -343,6 +426,7 @@ export default function TasksPage() {
         <DndContext
           sensors={sensors}
           onDragStart={handleDragStart}
+          onDragOver={handleDragOver}
           onDragEnd={handleDragEnd}
         >
           <Grid container spacing={3}>
@@ -353,6 +437,7 @@ export default function TasksPage() {
                 tasks={todoTasks}
                 color="blue"
                 currentUser={currentUser}
+                onDeleteTask={handleDeleteTask}
               />
             </Grid>
             <Grid item xs={12} md={4}>
@@ -362,6 +447,7 @@ export default function TasksPage() {
                 tasks={workingTasks}
                 color="orange"
                 currentUser={currentUser}
+                onDeleteTask={handleDeleteTask}
               />
             </Grid>
             <Grid item xs={12} md={4}>
@@ -371,6 +457,7 @@ export default function TasksPage() {
                 tasks={doneTasks}
                 color="green"
                 currentUser={currentUser}
+                onDeleteTask={handleDeleteTask}
               />
             </Grid>
           </Grid>

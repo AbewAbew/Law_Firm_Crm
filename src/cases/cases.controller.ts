@@ -55,6 +55,11 @@ export class CasesController {
     return this.casesService.getAssignments(id, req.user);
   }
 
+  @Patch(':id/close')
+  closeCase(@Param('id') id: string, @Request() req) {
+    return this.casesService.closeCase(id, req.user);
+  }
+
   @Delete(':id')
   @Roles(UserRole.PARTNER)
   remove(@Param('id') id: string) {

@@ -540,9 +540,12 @@ function CommunicationsView({ caseId }: { caseId: string }) {
   const [messages, setMessages] = useState<any[]>([]);
   const [documentRequests, setDocumentRequests] = useState<any[]>([]);
   const [userRole, setUserRole] = useState<string>('CLIENT');
+  const [currentUser, setCurrentUser] = useState<any>(null);
   const [newMessage, setNewMessage] = useState('');
   const [newRequest, setNewRequest] = useState({ title: '', description: '' });
   const [openRequestDialog, setOpenRequestDialog] = useState(false);
+  const [isTyping, setIsTyping] = useState(false);
+  const messagesEndRef = React.useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (caseId) {
@@ -552,10 +555,19 @@ function CommunicationsView({ caseId }: { caseId: string }) {
     }
   }, [caseId]);
 
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
   const fetchUserProfile = async () => {
     try {
       const response = await api.get('/auth/profile');
       setUserRole(response.data.role);
+      setCurrentUser(response.data);
     } catch (error) {
       console.error('Failed to fetch user profile');
     }
@@ -581,112 +593,434 @@ function CommunicationsView({ caseId }: { caseId: string }) {
 
   const sendMessage = async () => {
     if (!newMessage.trim()) return;
+    setIsTyping(true);
     try {
       await api.post(`/cases/${caseId}/communications/messages`, { content: newMessage });
       setNewMessage('');
       fetchMessages();
+      toast.success('Message sent');
     } catch (error) {
-      console.error('Failed to send message');
+      toast.error('Failed to send message');
+    } finally {
+      setIsTyping(false);
     }
   };
 
   const createDocumentRequest = async () => {
-    if (!newRequest.title.trim() || !newRequest.description.trim()) return;
+    if (!newRequest.title.trim() || !newRequest.description.trim()) {
+      toast.error('Please fill in all fields');
+      return;
+    }
     try {
       await api.post(`/cases/${caseId}/communications/document-requests`, newRequest);
       setNewRequest({ title: '', description: '' });
       setOpenRequestDialog(false);
       fetchDocumentRequests();
+      toast.success('Document request created');
     } catch (error) {
-      console.error('Failed to create document request');
+      toast.error('Failed to create document request');
+    }
+  };
+
+  const getRoleColor = (role: string) => {
+    switch (role) {
+      case 'PARTNER': return '#1976d2';
+      case 'ASSOCIATE': return '#388e3c';
+      case 'PARALEGAL': return '#f57c00';
+      case 'CLIENT': return '#7b1fa2';
+      default: return '#616161';
+    }
+  };
+
+  const getRoleIcon = (role: string) => {
+    switch (role) {
+      case 'PARTNER': return '👔';
+      case 'ASSOCIATE': return '⚖️';
+      case 'PARALEGAL': return '📋';
+      case 'CLIENT': return '👤';
+      default: return '💼';
+    }
+  };
+
+  const formatTime = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
+    
+    if (diffInHours < 24) {
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } else if (diffInHours < 168) { // 7 days
+      return date.toLocaleDateString([], { weekday: 'short', hour: '2-digit', minute: '2-digit' });
+    } else {
+      return date.toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
     }
   };
 
   return (
-    <Box sx={{ mt: 2 }}>
-      <Grid container spacing={3}>
-        <Grid item xs={12} md={6}>
-          <Paper sx={{ p: 2 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-              <Typography variant="h6">Messages</Typography>
-            </Box>
-            <Box sx={{ maxHeight: 300, overflow: 'auto', mb: 2 }}>
-              {messages.map((message) => (
-                <Box key={message.id} sx={{ mb: 2, p: 1, bgcolor: 'grey.50', borderRadius: 1 }}>
-                  <Typography variant="body2">{message.content}</Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    {message.sender.name} ({message.sender.role}) - {new Date(message.createdAt).toLocaleString()}
-                  </Typography>
+    <Box sx={{ mt: 2, height: '70vh', display: 'flex', flexDirection: 'column' }}>
+      <Grid container spacing={3} sx={{ flex: 1, overflow: 'hidden' }}>
+        {/* Enhanced Message Board */}
+        <Grid item xs={12} md={8}>
+          <Paper sx={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            {/* Header */}
+            <Box sx={{ 
+              p: 2, 
+              borderBottom: 1, 
+              borderColor: 'divider',
+              bgcolor: 'primary.main',
+              color: 'white'
+            }}>
+              <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                💬 Case Communications
+                <Box sx={{ 
+                  ml: 'auto', 
+                  px: 1.5, 
+                  py: 0.5, 
+                  bgcolor: 'rgba(255,255,255,0.2)', 
+                  borderRadius: 2,
+                  fontSize: '0.75rem'
+                }}>
+                  {messages.length} messages
                 </Box>
-              ))}
+              </Typography>
             </Box>
-            <Box sx={{ display: 'flex', gap: 1 }}>
-              <TextField
-                fullWidth
-                size="small"
-                placeholder="Type your message..."
-                value={newMessage}
-                onChange={(e) => setNewMessage(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
-              />
-              <Button onClick={sendMessage} variant="contained" size="small">
-                Send
-              </Button>
+            
+            {/* Messages Area */}
+            <Box sx={{ 
+              flex: 1, 
+              overflow: 'auto', 
+              p: 1,
+              bgcolor: 'grey.50'
+            }}>
+              {messages.length === 0 ? (
+                <Box sx={{ 
+                  display: 'flex', 
+                  flexDirection: 'column', 
+                  alignItems: 'center', 
+                  justifyContent: 'center',
+                  height: '100%',
+                  color: '#666666'
+                }}>
+                  <Typography variant="h6" sx={{ mb: 1, color: '#666666' }}>💭</Typography>
+                  <Typography variant="body1" sx={{ color: '#333333', fontWeight: 500 }}>No messages yet</Typography>
+                  <Typography variant="body2" sx={{ color: '#666666' }}>Start the conversation!</Typography>
+                </Box>
+              ) : (
+                messages.map((message, index) => {
+                  const isCurrentUser = message.sender.id === (currentUser?.userId || currentUser?.sub);
+                  const showAvatar = index === 0 || messages[index - 1].sender.id !== message.sender.id;
+                  
+                  return (
+                    <Box key={message.id} sx={{ 
+                      display: 'flex', 
+                      justifyContent: isCurrentUser ? 'flex-end' : 'flex-start',
+                      mb: showAvatar ? 2 : 0.5,
+                      alignItems: 'flex-end'
+                    }}>
+                      {!isCurrentUser && showAvatar && (
+                        <Box sx={{ 
+                          width: 40, 
+                          height: 40, 
+                          borderRadius: '50%', 
+                          bgcolor: getRoleColor(message.sender.role),
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: 'white',
+                          fontSize: '1.2rem',
+                          mr: 1,
+                          boxShadow: 2
+                        }}>
+                          {getRoleIcon(message.sender.role)}
+                        </Box>
+                      )}
+                      
+                      <Box sx={{ 
+                        maxWidth: '70%',
+                        ml: !isCurrentUser && !showAvatar ? 6 : 0
+                      }}>
+                        {showAvatar && (
+                          <Typography variant="caption" sx={{ 
+                            display: 'block',
+                            mb: 0.5,
+                            ml: isCurrentUser ? 0 : 1,
+                            color: getRoleColor(message.sender.role),
+                            fontWeight: 600
+                          }}>
+                            {message.sender.name} • {message.sender.role}
+                          </Typography>
+                        )}
+                        
+                        <Paper sx={{
+                          p: 1.5,
+                          bgcolor: isCurrentUser ? '#1976d2' : 'white',
+                          color: isCurrentUser ? 'white' : 'text.primary',
+                          borderRadius: isCurrentUser ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
+                          boxShadow: isCurrentUser ? '0 2px 8px rgba(25,118,210,0.3)' : 1,
+                          border: isCurrentUser ? 'none' : '1px solid #e0e0e0'
+                        }}>
+                          <Typography variant="body2" sx={{ wordBreak: 'break-word' }}>
+                            {message.content}
+                          </Typography>
+                        </Paper>
+                        
+                        <Typography variant="caption" sx={{ 
+                          display: 'block',
+                          mt: 0.5,
+                          textAlign: isCurrentUser ? 'right' : 'left',
+                          color: 'text.secondary',
+                          ml: isCurrentUser ? 0 : 1
+                        }}>
+                          {formatTime(message.createdAt)}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  );
+                })
+              )}
+              <div ref={messagesEndRef} />
+            </Box>
+            
+            {/* Message Input */}
+            <Box sx={{ 
+              p: 2, 
+              borderTop: 1, 
+              borderColor: 'divider',
+              bgcolor: 'white'
+            }}>
+              <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-end' }}>
+                <TextField
+                  fullWidth
+                  multiline
+                  maxRows={3}
+                  placeholder="Type your message..."
+                  value={newMessage}
+                  onChange={(e) => setNewMessage(e.target.value)}
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      sendMessage();
+                    }
+                  }}
+                  disabled={isTyping}
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      borderRadius: 3,
+                      bgcolor: 'white',
+                      border: '1px solid #e0e0e0',
+                      '& fieldset': {
+                        borderColor: '#e0e0e0'
+                      },
+                      '&:hover fieldset': {
+                        borderColor: '#bdbdbd'
+                      },
+                      '&.Mui-focused fieldset': {
+                        borderColor: 'primary.main'
+                      },
+                      '& input': {
+                        color: '#000000 !important'
+                      },
+                      '& textarea': {
+                        color: '#000000 !important'
+                      }
+                    },
+                    '& .MuiInputBase-input::placeholder': {
+                      color: '#757575',
+                      opacity: 1
+                    }
+                  }}
+                />
+                <Button 
+                  onClick={sendMessage} 
+                  variant="contained" 
+                  disabled={!newMessage.trim() || isTyping}
+                  sx={{ 
+                    borderRadius: 3,
+                    px: 3,
+                    py: 1.5
+                  }}
+                >
+                  {isTyping ? '⏳' : '📤'}
+                </Button>
+              </Box>
+              <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
+                Press Enter to send, Shift+Enter for new line
+              </Typography>
             </Box>
           </Paper>
         </Grid>
-        <Grid item xs={12} md={6}>
-          <Paper sx={{ p: 2 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-              <Typography variant="h6">Document Requests</Typography>
-              {userRole !== 'CLIENT' && (
-                <Button size="small" onClick={() => setOpenRequestDialog(true)}>
-                  Request Document
-                </Button>
-              )}
+        
+        {/* Enhanced Document Requests */}
+        <Grid item xs={12} md={4}>
+          <Paper sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+            <Box sx={{ 
+              p: 2, 
+              borderBottom: 1, 
+              borderColor: 'divider',
+              bgcolor: 'secondary.main',
+              color: 'white'
+            }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Typography variant="h6">📋 Document Requests</Typography>
+                {userRole !== 'CLIENT' && (
+                  <Button 
+                    size="small" 
+                    onClick={() => setOpenRequestDialog(true)}
+                    sx={{ 
+                      color: 'white', 
+                      borderColor: 'rgba(255,255,255,0.5)',
+                      '&:hover': { borderColor: 'white', bgcolor: 'rgba(255,255,255,0.1)' }
+                    }}
+                    variant="outlined"
+                  >
+                    + Request
+                  </Button>
+                )}
+              </Box>
             </Box>
-            <Box sx={{ maxHeight: 300, overflow: 'auto' }}>
-              {documentRequests.map((request) => (
-                <Box key={request.id} sx={{ mb: 2, p: 1, border: 1, borderColor: 'grey.300', borderRadius: 1 }}>
-                  <Typography variant="subtitle2">{request.title}</Typography>
-                  <Typography variant="body2" sx={{ mb: 1 }}>{request.description}</Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    Requested by: {request.requestedBy.name} - Status: {request.status}
-                  </Typography>
-                  {request.response && (
-                    <Typography variant="body2" sx={{ mt: 1, fontStyle: 'italic' }}>
-                      Response: {request.response}
-                    </Typography>
-                  )}
+            
+            <Box sx={{ flex: 1, overflow: 'auto', p: 1 }}>
+              {documentRequests.length === 0 ? (
+                <Box sx={{ 
+                  display: 'flex', 
+                  flexDirection: 'column', 
+                  alignItems: 'center', 
+                  justifyContent: 'center',
+                  height: '100%',
+                  color: 'text.secondary'
+                }}>
+                  <Typography variant="h6" sx={{ mb: 1 }}>📄</Typography>
+                  <Typography variant="body2">No document requests</Typography>
                 </Box>
-              ))}
+              ) : (
+                documentRequests.map((request) => (
+                  <Paper key={request.id} sx={{ 
+                    mb: 2, 
+                    p: 2, 
+                    border: 1, 
+                    borderColor: request.status === 'PENDING' ? 'warning.main' : 'success.main',
+                    borderRadius: 2,
+                    position: 'relative',
+                    '&:hover': { boxShadow: 3 }
+                  }}>
+                    <Box sx={{ 
+                      position: 'absolute',
+                      top: 8,
+                      right: 8,
+                      px: 1,
+                      py: 0.5,
+                      borderRadius: 1,
+                      bgcolor: request.status === 'PENDING' ? 'warning.light' : 'success.light',
+                      color: request.status === 'PENDING' ? 'warning.dark' : 'success.dark',
+                      fontSize: '0.7rem',
+                      fontWeight: 600
+                    }}>
+                      {request.status}
+                    </Box>
+                    
+                    <Typography variant="subtitle2" sx={{ mb: 1, pr: 8 }}>
+                      {request.title}
+                    </Typography>
+                    <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary' }}>
+                      {request.description}
+                    </Typography>
+                    
+                    <Box sx={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      gap: 1,
+                      mb: request.response ? 1 : 0
+                    }}>
+                      <Box sx={{ 
+                        width: 24, 
+                        height: 24, 
+                        borderRadius: '50%', 
+                        bgcolor: getRoleColor(request.requestedBy.role || 'CLIENT'),
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '0.7rem'
+                      }}>
+                        {getRoleIcon(request.requestedBy.role || 'CLIENT')}
+                      </Box>
+                      <Typography variant="caption" color="text.secondary">
+                        {request.requestedBy.name}
+                      </Typography>
+                    </Box>
+                    
+                    {request.response && (
+                      <Box sx={{ 
+                        mt: 1, 
+                        p: 1.5, 
+                        bgcolor: 'success.light', 
+                        borderRadius: 1,
+                        border: 1,
+                        borderColor: 'success.main'
+                      }}>
+                        <Typography variant="body2" sx={{ fontStyle: 'italic' }}>
+                          📝 Response: {request.response}
+                        </Typography>
+                      </Box>
+                    )}
+                  </Paper>
+                ))
+              )}
             </Box>
           </Paper>
         </Grid>
       </Grid>
 
-      <Dialog open={openRequestDialog} onClose={() => setOpenRequestDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Request Document</DialogTitle>
-        <DialogContent>
+      {/* Enhanced Document Request Dialog */}
+      <Dialog 
+        open={openRequestDialog} 
+        onClose={() => setOpenRequestDialog(false)} 
+        maxWidth="sm" 
+        fullWidth
+        PaperProps={{
+          sx: { borderRadius: 3 }
+        }}
+      >
+        <DialogTitle sx={{ 
+          bgcolor: 'secondary.main',
+          color: 'white',
+          textAlign: 'center'
+        }}>
+          📋 Request Document
+        </DialogTitle>
+        <DialogContent sx={{ mt: 2 }}>
           <TextField
             fullWidth
             label="Document Title"
             value={newRequest.title}
             onChange={(e) => setNewRequest({ ...newRequest, title: e.target.value })}
-            sx={{ mb: 2, mt: 1 }}
+            sx={{ mb: 2 }}
+            variant="outlined"
           />
           <TextField
             fullWidth
             multiline
-            rows={3}
+            rows={4}
             label="Description"
             value={newRequest.description}
             onChange={(e) => setNewRequest({ ...newRequest, description: e.target.value })}
+            variant="outlined"
+            placeholder="Please describe what document you need and why..."
           />
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenRequestDialog(false)}>Cancel</Button>
-          <Button onClick={createDocumentRequest} variant="contained">Request</Button>
+        <DialogActions sx={{ p: 2 }}>
+          <Button onClick={() => setOpenRequestDialog(false)} sx={{ borderRadius: 2 }}>
+            Cancel
+          </Button>
+          <Button 
+            onClick={createDocumentRequest} 
+            variant="contained" 
+            color="secondary"
+            sx={{ 
+              borderRadius: 2
+            }}
+          >
+            Create Request
+          </Button>
         </DialogActions>
       </Dialog>
     </Box>

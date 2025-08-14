@@ -192,4 +192,26 @@ export class AnalyticsService {
       recentRevenue: recentRevenue._sum.amount || 0,
     };
   }
+
+  async getRecentCases(limit: number = 10) {
+    return this.prisma.case.findMany({
+      take: limit,
+      orderBy: { updatedAt: 'desc' },
+      include: {
+        client: { select: { id: true, name: true, email: true } },
+        _count: { select: { tasks: true, timeEntries: true } },
+      },
+    });
+  }
+
+  async getRecentTimeEntries(limit: number = 20) {
+    return this.prisma.timeEntry.findMany({
+      take: limit,
+      orderBy: { startTime: 'desc' },
+      include: {
+        user: { select: { id: true, name: true, role: true } },
+        case: { select: { id: true, caseName: true, client: { select: { name: true } } } },
+      },
+    });
+  }
 }

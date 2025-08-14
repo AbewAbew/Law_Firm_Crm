@@ -33,6 +33,7 @@ import {
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
+import CloseIcon from '@mui/icons-material/Close';
 import { Autocomplete, IconButton } from '@mui/material';
 // We don't need the Link component here anymore
 import api from '@/lib/axios';
@@ -47,6 +48,11 @@ interface Case {
   client: {
     id: string;
     name: string | null;
+  };
+  createdBy?: {
+    id: string;
+    name: string;
+    role: string;
   };
 }
 
@@ -294,6 +300,20 @@ export default function CasesPage() {
     }
   };
 
+  const handleCloseCase = async (caseId: string, caseName: string) => {
+    if (window.confirm(`Are you sure you want to close "${caseName}"? This will mark the case as closed.`)) {
+      try {
+        await api.patch(`/cases/${caseId}/close`);
+        toast.success('Case closed successfully');
+        await refreshCases();
+      } catch (err: any) {
+        console.error(err);
+        const message = err?.response?.data?.message || 'Failed to close case';
+        toast.error(Array.isArray(message) ? message.join(', ') : message);
+      }
+    }
+  };
+
   return (
     <Box sx={{ p: 3, minHeight: 'calc(100vh - 64px)' }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
@@ -377,7 +397,7 @@ export default function CasesPage() {
                 <TableCell>Case Number</TableCell>
                 <TableCell>Client</TableCell>
                 <TableCell>Status</TableCell>
-                {userRole === 'PARTNER' && <TableCell>Actions</TableCell>}
+                {(userRole === 'PARTNER' || userRole === 'ASSOCIATE') && <TableCell>Actions</TableCell>}
               </TableRow>
             </TableHead>
             <TableBody>
@@ -409,18 +429,33 @@ export default function CasesPage() {
                   >
                     {caseItem.status}
                   </TableCell>
-                  {userRole === 'PARTNER' && (
+                  {(userRole === 'PARTNER' || userRole === 'ASSOCIATE') && (
                     <TableCell>
-                      <IconButton
-                        color="error"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeleteCase(caseItem.id, caseItem.caseName);
-                        }}
-                        title="Delete Case"
-                      >
-                        <DeleteIcon />
-                      </IconButton>
+                      {caseItem.status === 'OPEN' && caseItem.createdBy?.id === currentUserId && (
+                        <IconButton
+                          color="warning"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleCloseCase(caseItem.id, caseItem.caseName);
+                          }}
+                          title="Close Case (Creator Only)"
+                          sx={{ mr: 1 }}
+                        >
+                          <CloseIcon />
+                        </IconButton>
+                      )}
+                      {userRole === 'PARTNER' && (
+                        <IconButton
+                          color="error"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteCase(caseItem.id, caseItem.caseName);
+                          }}
+                          title="Delete Case"
+                        >
+                          <DeleteIcon />
+                        </IconButton>
+                      )}
                     </TableCell>
                   )}
                 </TableRow>

@@ -137,6 +137,7 @@ model User {
 
   // Relationships
   casesAsClient      Case[]                @relation("ClientCases")
+  casesCreated       Case[]                @relation("CasesCreated")
   tasksAssignedBy    Task[]                @relation("TasksAssignedBy")
   tasksAssignedTo    Task[]                @relation("TasksAssignedTo")
   documents          Document[]
@@ -172,6 +173,8 @@ model Case {
   // Relationships
   client          User           @relation("ClientCases", fields: [clientId], references: [id])
   clientId        String
+  createdBy       User           @relation("CasesCreated", fields: [createdById], references: [id])
+  createdById     String
   tasks           Task[]
   documents       Document[]
   timeEntries     TimeEntry[]

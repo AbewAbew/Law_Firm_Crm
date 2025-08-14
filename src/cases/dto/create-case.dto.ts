@@ -1,5 +1,6 @@
 // src/cases/dto/create-case.dto.ts
-import { IsNotEmpty, IsOptional, IsString, IsEmail, IsArray } from 'class-validator';
+import { IsNotEmpty, IsOptional, IsString, IsEmail, IsArray, IsEnum } from 'class-validator';
+import { CaseStatus } from '@prisma/client';
 
 export class CreateCaseDto {
   @IsString()
@@ -13,6 +14,14 @@ export class CreateCaseDto {
   @IsString()
   @IsOptional()
   description?: string;
+
+  @IsEnum(CaseStatus)
+  @IsOptional()
+  status?: CaseStatus;
+
+  @IsString()
+  @IsOptional()
+  practiceArea?: string;
 
   @IsString()
   @IsOptional()
