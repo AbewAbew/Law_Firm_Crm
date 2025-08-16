@@ -221,14 +221,13 @@ export class CasesService {
     }
     
     if (user.role === UserRole.ASSOCIATE || user.role === UserRole.PARALEGAL) {
-      // Get cases where user is directly assigned OR has tasks assigned
-      const casesWithAssignments = await this.prisma.case.findMany({
+      // Single optimized query with OR condition
+      return this.prisma.case.findMany({
         where: {
-          caseAssignments: {
-            some: {
-              userId: user.userId
-            }
-          }
+          OR: [
+            { caseAssignments: { some: { userId: user.userId } } },
+            { tasks: { some: { assignedToId: user.userId } } }
+          ]
         },
         include: { 
           client: { select: { id: true, name: true } },
@@ -238,33 +237,8 @@ export class CasesService {
             }
           }
         },
+        orderBy: { createdAt: 'desc' },
       });
-      
-      const casesWithTasks = await this.prisma.case.findMany({
-        where: {
-          tasks: {
-            some: {
-              assignedToId: user.userId
-            }
-          }
-        },
-        include: { 
-          client: { select: { id: true, name: true } },
-          caseAssignments: {
-            include: {
-              user: { select: { id: true, name: true, role: true } }
-            }
-          }
-        },
-      });
-      
-      // Combine and deduplicate cases
-      const allCases = [...casesWithAssignments, ...casesWithTasks];
-      const uniqueCases = allCases.filter((case1, index, self) => 
-        index === self.findIndex(case2 => case2.id === case1.id)
-      );
-      
-      return uniqueCases.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     }
     
     return [];

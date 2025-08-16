@@ -28,6 +28,11 @@ export class AnalyticsController {
     return this.analyticsService.getDashboardMetrics();
   }
 
+  @Get('dashboard-data')
+  getDashboardData() {
+    return this.analyticsService.getDashboardData();
+  }
+
   @Get('recent-cases')
   getRecentCases(@Query('limit') limit?: string) {
     return this.analyticsService.getRecentCases(limit ? parseInt(limit) : 10);

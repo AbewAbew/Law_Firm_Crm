@@ -12,7 +12,11 @@ import {
     UploadedFile,    // <-- Import for accessing the uploaded file
     ParseFilePipe,   // <-- Import for file validation
     MaxFileSizeValidator,
+    Body,
+    Res,
+    Header,
   } from '@nestjs/common';
+  import type { Response } from 'express';
   import { DocumentsService } from './documents.service';
   import { AuthGuard } from 'src/auth/guards/auth.guard';
   import { RolesGuard } from 'src/auth/guards/roles.guard';
@@ -24,6 +28,35 @@ import {
   @Controller() // Controller path is defined on the methods
   export class DocumentsController {
     constructor(private readonly documentsService: DocumentsService) {}
+
+    // --- Endpoint to upload document with FormData ---
+    @Post('documents/upload')
+    @Roles(UserRole.PARTNER, UserRole.ASSOCIATE, UserRole.CLIENT)
+    @UseInterceptors(FileInterceptor('file'))
+    async uploadDocument(
+      @Request() req,
+      @UploadedFile(
+        new ParseFilePipe({
+          validators: [
+            new MaxFileSizeValidator({ maxSize: 1024 * 1024 * 10 }), // 10 MB limit
+          ],
+        }),
+      )
+      file: Express.Multer.File,
+      @Body('caseId') caseId: string
+    ) {
+      return this.documentsService.uploadFile(file, caseId, req.user);
+    }
+
+    // --- Endpoint to save document metadata from Firebase ---
+    @Post('documents')
+    @Roles(UserRole.PARTNER, UserRole.ASSOCIATE, UserRole.CLIENT)
+    async saveDocumentMetadata(
+      @Request() req,
+      @Body() body: { name: string; fileType: string; fileUrl: string; fileSize: number; caseId: string }
+    ) {
+      return this.documentsService.saveDocumentMetadata(body, req.user);
+    }
   
     // --- Endpoint to UPLOAD a document for a specific case ---
     // The full path will be POST /cases/:caseId/documents
@@ -55,6 +88,42 @@ import {
       return this.documentsService.findForCase(caseId);
     }
   
+    // --- Endpoint to PREVIEW a document (converts DOCX to PDF) ---
+    @Get('documents/:documentId/preview')
+    @Roles(UserRole.PARTNER, UserRole.ASSOCIATE, UserRole.PARALEGAL, UserRole.CLIENT)
+    async previewDocument(
+      @Param('documentId') documentId: string, 
+      @Request() req,
+      @Res() res: Response
+    ) {
+      const file = await this.documentsService.previewFile(documentId, req.user);
+      
+      res.set({
+        'Content-Type': file.mimetype,
+        'Content-Disposition': `inline; filename="${file.filename}"`,
+      });
+      
+      res.send(file.buffer);
+    }
+
+    // --- Endpoint to DOWNLOAD a document ---
+    @Get('documents/:documentId/download')
+    @Roles(UserRole.PARTNER, UserRole.ASSOCIATE, UserRole.PARALEGAL, UserRole.CLIENT)
+    async downloadDocument(
+      @Param('documentId') documentId: string, 
+      @Request() req,
+      @Res() res: Response
+    ) {
+      const file = await this.documentsService.downloadFile(documentId, req.user);
+      
+      res.set({
+        'Content-Type': file.mimetype,
+        'Content-Disposition': `attachment; filename="${file.filename}"`,
+      });
+      
+      res.send(file.buffer);
+    }
+
     // --- Endpoint to DELETE a document ---
     // The full path will be DELETE /documents/:documentId
     @Delete('documents/:documentId')

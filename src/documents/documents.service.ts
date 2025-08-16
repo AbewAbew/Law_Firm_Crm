@@ -1,11 +1,7 @@
-// src/documents/documents.service.ts (OAuth 2.0 Refresh Token Version)
-
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { google } from 'googleapis';
 import { PrismaService } from 'src/prisma/prisma.service';
-import * as stream from 'stream';
 import { UserRole } from '@prisma/client';
-import { ConfigService } from '@nestjs/config';
+import { AppwriteService } from 'src/appwrite/appwrite.service';
 
 interface AuthenticatedUser {
   userId: string;
@@ -14,30 +10,10 @@ interface AuthenticatedUser {
 
 @Injectable()
 export class DocumentsService {
-  private drive;
-
   constructor(
     private prisma: PrismaService,
-    private configService: ConfigService,
-  ) {
-    // --- Authenticate with Google Drive using OAuth 2.0 and a Refresh Token ---
-    const clientId = this.configService.get<string>('GOOGLE_OAUTH_CLIENT_ID');
-    const clientSecret = this.configService.get<string>('GOOGLE_OAUTH_CLIENT_SECRET');
-    const refreshToken = this.configService.get<string>('GOOGLE_OAUTH_REFRESH_TOKEN');
-
-    // Create an OAuth2 client
-    const oauth2Client = new google.auth.OAuth2(
-      clientId,
-      clientSecret,
-      "https://developers.google.com/oauthplayground" // Redirect URI, can be this for server-side
-    );
-
-    // Set the refresh token to the client
-    oauth2Client.setCredentials({ refresh_token: refreshToken });
-
-    // Initialize the Drive service with the authenticated client
-    this.drive = google.drive({ version: 'v3', auth: oauth2Client });
-  }
+    private appwriteService: AppwriteService,
+  ) {}
 
   async uploadFile(
     file: Express.Multer.File,
@@ -51,33 +27,14 @@ export class DocumentsService {
       throw new NotFoundException(`Case with ID "${caseId}" not found.`);
     }
 
-    const bufferStream = new stream.PassThrough();
-    bufferStream.end(file.buffer);
-
-    const driveFolderId = this.configService.get<string>('GOOGLE_DRIVE_FOLDER_ID');
-
-    const response = await this.drive.files.create({
-      media: {
-        mimeType: file.mimetype,
-        body: bufferStream,
-      },
-      requestBody: {
-        name: file.originalname,
-        parents: [driveFolderId],
-      },
-      fields: 'id, name',
-    });
-
-    const googleFileId = response.data.id;
-    if (!googleFileId) {
-      throw new Error('File upload to Google Drive failed.');
-    }
+    const filePath = `cases/${caseId}/${Date.now()}-${file.originalname}`;
+    const { url } = await this.appwriteService.uploadFile(file, filePath);
 
     const documentRecord = await this.prisma.document.create({
       data: {
-        name: response.data.name,
+        name: file.originalname,
         fileType: file.mimetype,
-        fileUrl: `https://drive.google.com/file/d/${googleFileId}/view`,
+        fileUrl: url,
         fileSize: file.size,
         case: { connect: { id: caseId } },
         uploadedBy: { connect: { id: uploader.userId } },
@@ -100,6 +57,31 @@ export class DocumentsService {
     });
   }
 
+  async saveDocumentMetadata(
+    metadata: { name: string; fileType: string; fileUrl: string; fileSize: number; caseId: string },
+    uploader: AuthenticatedUser,
+  ) {
+    const caseRecord = await this.prisma.case.findUnique({
+      where: { id: metadata.caseId },
+    });
+    if (!caseRecord) {
+      throw new NotFoundException(`Case with ID "${metadata.caseId}" not found.`);
+    }
+
+    const documentRecord = await this.prisma.document.create({
+      data: {
+        name: metadata.name,
+        fileType: metadata.fileType,
+        fileUrl: metadata.fileUrl,
+        fileSize: metadata.fileSize,
+        case: { connect: { id: metadata.caseId } },
+        uploadedBy: { connect: { id: uploader.userId } },
+      },
+    });
+
+    return documentRecord;
+  }
+
   async remove(documentId: string) {
     const documentRecord = await this.prisma.document.findUnique({
       where: { id: documentId },
@@ -109,12 +91,12 @@ export class DocumentsService {
     }
 
     try {
-      const fileId = documentRecord.fileUrl?.split('/d/')[1]?.split('/')[0];
+      const fileId = documentRecord.fileUrl?.split('/files/')[1]?.split('/view')[0];
       if (fileId) {
-        await this.drive.files.delete({ fileId });
+        await this.appwriteService.deleteFile(fileId);
       }
     } catch (error) {
-        console.error(`Failed to delete file from Google Drive: ${error.message}`);
+      console.error(`Failed to delete file from Appwrite: ${error.message}`);
     }
 
     await this.prisma.document.delete({
@@ -122,5 +104,58 @@ export class DocumentsService {
     });
 
     return { message: `Document "${documentRecord.name}" was successfully deleted.` };
+  }
+
+  async downloadFile(documentId: string, user: AuthenticatedUser) {
+    const documentRecord = await this.prisma.document.findUnique({
+      where: { id: documentId },
+      include: { case: true },
+    });
+    
+    if (!documentRecord) {
+      throw new NotFoundException(`Document with ID "${documentId}" not found.`);
+    }
+
+    const fileId = documentRecord.fileUrl?.split('/files/')[1]?.split('/view')[0];
+    if (!fileId) {
+      throw new NotFoundException('File ID not found in URL.');
+    }
+
+    const fileBuffer = await this.appwriteService.getFileBuffer(fileId);
+    
+    return {
+      buffer: fileBuffer,
+      filename: documentRecord.name,
+      mimetype: documentRecord.fileType,
+    };
+  }
+
+  async previewFile(documentId: string, user: AuthenticatedUser) {
+    const documentRecord = await this.prisma.document.findUnique({
+      where: { id: documentId },
+      include: { case: true },
+    });
+    
+    if (!documentRecord) {
+      throw new NotFoundException(`Document with ID "${documentId}" not found.`);
+    }
+
+    const fileId = documentRecord.fileUrl?.split('/files/')[1]?.split('/view')[0];
+    if (!fileId) {
+      throw new NotFoundException('File ID not found in URL.');
+    }
+
+    let fileBuffer = await this.appwriteService.getFileBuffer(fileId);
+    let mimetype = documentRecord.fileType;
+    let filename = documentRecord.name;
+
+    // For DOCX files, we'll let the frontend handle the preview
+    // No conversion needed on backend
+    
+    return {
+      buffer: fileBuffer,
+      filename,
+      mimetype,
+    };
   }
 }

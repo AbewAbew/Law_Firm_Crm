@@ -4,6 +4,7 @@
 import React, { useRef, useState } from 'react';
 import { Button, CircularProgress } from '@mui/material';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
+
 import api from '@/lib/axios';
 import toast from 'react-hot-toast';
 
@@ -28,27 +29,30 @@ export default function DocumentUploader({ caseId, onUploadSuccess }: DocumentUp
     setIsUploading(true);
     const toastId = toast.loading('Uploading document...');
 
-    // FormData is the required format for sending files
-    const formData = new FormData();
-    formData.append('file', file, file.name);
-
     try {
-      // Send the file to our backend endpoint
-      await api.post(`/cases/${caseId}/documents`, formData, {
+      console.log('Starting upload to backend...');
+      
+      // Upload directly to backend
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('caseId', caseId);
+      
+      await api.post('/documents/upload', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
       });
+      
+      console.log('Upload complete...');
 
       toast.success('Document uploaded successfully!', { id: toastId });
-      onUploadSuccess(); // Trigger the refresh in the parent component
+      onUploadSuccess();
     } catch (error: any) {
-      const errorMessage = error.response?.data?.message || 'Upload failed';
+      console.error('Upload error details:', error);
+      const errorMessage = error.code || error.response?.data?.message || error.message || 'Upload failed';
       toast.error(`Error: ${errorMessage}`, { id: toastId });
-      console.error('Upload error', error);
     } finally {
       setIsUploading(false);
-      // Reset the file input so the same file can be uploaded again if needed
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }

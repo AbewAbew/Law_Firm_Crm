@@ -3,10 +3,10 @@
 import { Module } from '@nestjs/common';
 import { DocumentsService } from './documents.service';
 import { DocumentsController } from './documents.controller';
-import { ConfigModule } from '@nestjs/config'; // <-- Import this
+import { AppwriteModule } from 'src/appwrite/appwrite.module';
 
 @Module({
-  imports: [ConfigModule], // <-- Add this line
+  imports: [AppwriteModule],
   controllers: [DocumentsController],
   providers: [DocumentsService],
 })

@@ -89,10 +89,14 @@ export default function DashboardPage() {
   const [timeEntriesModalOpen, setTimeEntriesModalOpen] = useState(false);
 
   useEffect(() => {
+    // Option 1: Keep existing separate calls (current workflow)
     fetchDashboardData();
     fetchRecentCases();
     fetchRecentTimeEntries();
     fetchUpcomingAppointments();
+    
+    // Option 2: Use single combined call (uncomment to enable)
+    // fetchAllDashboardData();
   }, []);
 
   const fetchDashboardData = async () => {
@@ -142,6 +146,21 @@ export default function DashboardPage() {
       setUpcomingAppointments(upcoming);
     } catch (error) {
       console.error('Failed to fetch appointments');
+    }
+  };
+
+  // Optional: Combined dashboard data fetch (more efficient)
+  const fetchAllDashboardData = async () => {
+    try {
+      const response = await api.get('/analytics/dashboard-data');
+      const { recentCases, recentTimeEntries, upcomingAppointments, ...metrics } = response.data;
+      
+      setDashboardData(metrics);
+      setRecentCases(recentCases);
+      setRecentTimeEntries(recentTimeEntries);
+      setUpcomingAppointments(upcomingAppointments);
+    } catch (error) {
+      console.error('Failed to fetch dashboard data');
     }
   };
 

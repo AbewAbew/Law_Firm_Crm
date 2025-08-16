@@ -193,6 +193,34 @@ export class AnalyticsService {
     };
   }
 
+  async getDashboardData() {
+    const now = new Date();
+    
+    const [
+      metrics,
+      recentCases,
+      recentTimeEntries,
+      upcomingAppointments
+    ] = await Promise.all([
+      this.getDashboardMetrics(),
+      this.getRecentCases(5),
+      this.getRecentTimeEntries(5),
+      this.prisma.appointment.findMany({
+        where: { startTime: { gt: now } },
+        take: 5,
+        orderBy: { startTime: 'asc' },
+        include: { case: { select: { caseName: true } } }
+      })
+    ]);
+
+    return {
+      ...metrics,
+      recentCases,
+      recentTimeEntries,
+      upcomingAppointments
+    };
+  }
+
   async getRecentCases(limit: number = 10) {
     return this.prisma.case.findMany({
       take: limit,

@@ -510,6 +510,8 @@ function DocumentsView({ caseId }: { caseId: string }) {
   const [documents, setDocuments] = useState<DocumentType[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [previewDoc, setPreviewDoc] = useState<DocumentType | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string>('');
 
   const fetchDocuments = async () => {
     try {
@@ -517,6 +519,60 @@ function DocumentsView({ caseId }: { caseId: string }) {
       const response = await api.get(`/cases/${caseId}/documents`);
       setDocuments(response.data);
     } catch (err) { setError('Failed to fetch documents.'); } finally { setLoading(false); }
+  };
+
+  const handleDownload = async (documentId: string, filename: string) => {
+    try {
+      const response = await api.get(`/documents/${documentId}/download`, {
+        responseType: 'blob',
+      });
+      
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', filename);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      toast.error('Failed to download file');
+    }
+  };
+
+  const handlePreview = async (doc: DocumentType) => {
+    // For non-previewable files, just show the modal without loading content
+    if (!canPreview(doc.fileType)) {
+      setPreviewDoc(doc);
+      setPreviewUrl('');
+      return;
+    }
+    
+    try {
+      const response = await api.get(`/documents/${doc.id}/download`, {
+        responseType: 'blob',
+      });
+      
+      const url = window.URL.createObjectURL(new Blob([response.data], { type: doc.fileType }));
+      setPreviewUrl(url);
+      setPreviewDoc(doc);
+    } catch (error) {
+      toast.error('Failed to preview file');
+    }
+  };
+
+  const closePreview = () => {
+    if (previewUrl) {
+      window.URL.revokeObjectURL(previewUrl);
+    }
+    setPreviewUrl('');
+    setPreviewDoc(null);
+  };
+
+  const canPreview = (fileType: string) => {
+    return fileType.startsWith('image/') || 
+           fileType === 'application/pdf' || 
+           fileType.startsWith('text/');
   };
 
   useEffect(() => { if (caseId) { fetchDocuments(); } }, [caseId]);
@@ -530,8 +586,94 @@ function DocumentsView({ caseId }: { caseId: string }) {
         <DocumentUploader caseId={caseId} onUploadSuccess={fetchDocuments} />
       </Box>
       {documents.length === 0 ? <Typography>No documents found for this case.</Typography> : (
-        <TableContainer component={Paper}><Table size="small"><TableHead><TableRow><TableCell>File Name</TableCell><TableCell>Uploaded By</TableCell><TableCell>Date Uploaded</TableCell><TableCell align="right">Actions</TableCell></TableRow></TableHead><TableBody>{documents.map((doc) => (<TableRow key={doc.id} hover><TableCell>{doc.fileName}</TableCell><TableCell>{doc.uploadedBy?.name || 'N/A'}</TableCell><TableCell>{new Date(doc.createdAt).toLocaleDateString()}</TableCell><TableCell align="right"><IconButton size="small"><DownloadIcon /></IconButton><IconButton size="small"><DeleteIcon /></IconButton></TableCell></TableRow>))}</TableBody></Table></TableContainer>
+        <TableContainer component={Paper}><Table size="small"><TableHead><TableRow><TableCell>File Name</TableCell><TableCell>Uploaded By</TableCell><TableCell>Date Uploaded</TableCell><TableCell align="right">Actions</TableCell></TableRow></TableHead><TableBody>{documents.map((doc) => (<TableRow key={doc.id} hover><TableCell>
+                  <Box 
+                    component="span" 
+                    sx={{ 
+                      cursor: 'pointer', 
+                      color: 'primary.main',
+                      '&:hover': { textDecoration: 'underline' }
+                    }}
+                    onClick={() => handlePreview(doc)}
+                  >
+                    {doc.name}
+                  </Box>
+                </TableCell><TableCell>{doc.uploadedBy?.name || 'N/A'}</TableCell><TableCell>{new Date(doc.createdAt).toLocaleDateString()}</TableCell><TableCell align="right"><IconButton size="small" onClick={() => handleDownload(doc.id, doc.name)}><DownloadIcon /></IconButton><IconButton size="small"><DeleteIcon /></IconButton></TableCell></TableRow>))}</TableBody></Table></TableContainer>
       )}
+      
+      {/* Document Preview Modal */}
+      <Dialog 
+        open={!!previewDoc} 
+        onClose={closePreview} 
+        maxWidth="lg" 
+        fullWidth
+        PaperProps={{ sx: { height: '90vh' } }}
+      >
+        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Typography variant="h6">{previewDoc?.name}</Typography>
+          <Box>
+            <Button 
+              onClick={() => previewDoc && handleDownload(previewDoc.id, previewDoc.name)}
+              startIcon={<DownloadIcon />}
+              sx={{ mr: 1 }}
+            >
+              Download
+            </Button>
+            <Button onClick={closePreview}>Close</Button>
+          </Box>
+        </DialogTitle>
+        <DialogContent sx={{ p: 0, height: '100%' }}>
+          {previewDoc && (
+            <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+              {previewDoc.fileType === 'application/pdf' ? (
+                <iframe
+                  src={previewUrl}
+                  style={{ width: '100%', height: '100%', border: 'none' }}
+                  title={previewDoc.name}
+                />
+              ) : previewDoc.fileType.startsWith('image/') ? (
+                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', p: 2 }}>
+                  <img 
+                    src={previewUrl} 
+                    alt={previewDoc.name}
+                    style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
+                  />
+                </Box>
+              ) : previewDoc.fileType.startsWith('text/') ? (
+                <Box sx={{ p: 2, height: '100%', overflow: 'auto' }}>
+                  <iframe
+                    src={previewUrl}
+                    style={{ width: '100%', height: '100%', border: 'none' }}
+                    title={previewDoc.name}
+                  />
+                </Box>
+              ) : (
+                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', p: 4, textAlign: 'center' }}>
+                  <Box sx={{ fontSize: '4rem', mb: 2 }}>📄</Box>
+                  <Typography variant="h5" sx={{ mb: 2, fontWeight: 600 }}>Cannot Preview This File</Typography>
+                  <Typography variant="body1" color="text.secondary" sx={{ mb: 1, maxWidth: 400 }}>
+                    {previewDoc.fileType.includes('word') || previewDoc.name.toLowerCase().includes('.docx') || previewDoc.name.toLowerCase().includes('.doc') 
+                      ? 'Microsoft Word documents cannot be previewed in the browser.' 
+                      : 'This file type cannot be previewed in the browser.'}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 4, maxWidth: 400 }}>
+                    Please download the file to view it with the appropriate application.
+                  </Typography>
+                  <Button 
+                    variant="contained" 
+                    size="large"
+                    startIcon={<DownloadIcon />}
+                    onClick={() => handleDownload(previewDoc.id, previewDoc.name)}
+                    sx={{ px: 4, py: 1.5 }}
+                  >
+                    Download File
+                  </Button>
+                </Box>
+              )}}
+            </Box>
+          )}
+        </DialogContent>
+      </Dialog>
     </Box>
   );
 }

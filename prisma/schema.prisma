@@ -187,6 +187,11 @@ model Case {
   messages        Message[]
   documentRequests DocumentRequest[]
   activeTimers    ActiveTimer[]
+
+  @@index([clientId])
+  @@index([status])
+  @@index([createdAt])
+  @@index([createdById])
 }
 
 model Task {
@@ -209,6 +214,11 @@ model Task {
   assignedToId     String
   timeEntries      TimeEntry[]
   activeTimers     ActiveTimer[]
+
+  @@index([caseId])
+  @@index([assignedToId])
+  @@index([assignedById])
+  @@index([status])
 }
 
 model Document {
@@ -270,6 +280,12 @@ model TimeEntry {
   invoiceId   String?
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
+
+  @@index([userId])
+  @@index([caseId])
+  @@index([startTime])
+  @@index([status])
+  @@index([invoiceStatus])
 }
 
 model Expense {
@@ -430,6 +446,8 @@ model CaseAssignment {
   assignedAt DateTime @default(now())
 
   @@unique([caseId, userId])
+  @@index([userId])
+  @@index([caseId])
 }
 
 model AppointmentAttendee {
