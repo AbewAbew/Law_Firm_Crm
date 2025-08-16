@@ -89,9 +89,9 @@ export class BillingController {
   }
 
   @Post('consolidate-drafts')
-  consolidateExistingDraftInvoices(
+  consolidateDraftInvoices(
     @Body() data: { caseId?: string },
   ) {
-    return this.billingService.consolidateExistingDraftInvoices(data.caseId);
+    return this.billingService.consolidateDraftInvoices(data.caseId);
   }
 }

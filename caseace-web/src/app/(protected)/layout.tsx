@@ -29,9 +29,9 @@ export default function ProtectedLayout({
         justifyContent: 'center', 
         alignItems: 'center', 
         height: '100vh',
-        background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)'
+        background: '#f7f7f8'
       }}>
-        <CircularProgress sx={{ color: '#00C49F' }} />
+        <CircularProgress sx={{ color: '#000000' }} />
       </Box>
     );
   }
@@ -42,7 +42,7 @@ export default function ProtectedLayout({
       <SideNav />
       <Box component="main" sx={{ 
         flexGrow: 1, 
-        background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)',
+        background: '#f7f7f8',
         minHeight: '100vh'
       }}>
         <Toolbar />

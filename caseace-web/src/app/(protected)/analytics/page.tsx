@@ -134,7 +134,7 @@ export default function AnalyticsPage() {
       <Box sx={{ p: 3 }}>
       <Typography variant="h4" sx={{ 
         mb: 4, 
-        color: '#ffffff',
+        color: '#000000',
         fontWeight: 600,
         fontSize: '2rem'
       }}>Analytics Dashboard</Typography>
@@ -151,12 +151,12 @@ export default function AnalyticsPage() {
             '& .MuiOutlinedInput-root': {
               backgroundColor: 'rgba(255, 255, 255, 0.05)',
               borderRadius: '12px',
-              '& fieldset': { borderColor: 'rgba(255, 255, 255, 0.1)' },
+              '& fieldset': { borderColor: '#000000' },
               '&:hover fieldset': { borderColor: '#00C49F' },
               '&.Mui-focused fieldset': { borderColor: '#00C49F' }
             },
-            '& .MuiInputLabel-root': { color: 'rgba(255, 255, 255, 0.7)' },
-            '& .MuiInputBase-input': { color: '#ffffff' }
+            '& .MuiInputLabel-root': { color: '#000000' },
+            '& .MuiInputBase-input': { color: '#000000' }
           }}
         />
         <TextField
@@ -169,12 +169,12 @@ export default function AnalyticsPage() {
             '& .MuiOutlinedInput-root': {
               backgroundColor: 'rgba(255, 255, 255, 0.05)',
               borderRadius: '12px',
-              '& fieldset': { borderColor: 'rgba(255, 255, 255, 0.1)' },
+              '& fieldset': { borderColor: '#000000' },
               '&:hover fieldset': { borderColor: '#00C49F' },
               '&.Mui-focused fieldset': { borderColor: '#00C49F' }
             },
-            '& .MuiInputLabel-root': { color: 'rgba(255, 255, 255, 0.7)' },
-            '& .MuiInputBase-input': { color: '#ffffff' }
+            '& .MuiInputLabel-root': { color: '#000000' },
+            '& .MuiInputBase-input': { color: '#000000' }
           }}
         />
       </Box>
@@ -194,8 +194,8 @@ export default function AnalyticsPage() {
             }
           }}>
             <CardContent>
-              <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.6)', mb: 1 }}>Total Cases</Typography>
-              <Typography variant="h4" sx={{ color: '#ffffff', fontWeight: 700 }}>{dashboardMetrics.totalCases}</Typography>
+              <Typography variant="body2" sx={{ color: '#000000', mb: 1 }}>Total Cases</Typography>
+              <Typography variant="h4" sx={{ color: '#000000', fontWeight: 700 }}>{dashboardMetrics.totalCases}</Typography>
             </CardContent>
           </Card>
         </Grid>
@@ -212,7 +212,7 @@ export default function AnalyticsPage() {
             }
           }}>
             <CardContent>
-              <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.6)', mb: 1 }}>Active Cases</Typography>
+              <Typography variant="body2" sx={{ color: '#000000', mb: 1 }}>Active Cases</Typography>
               <Typography variant="h4" sx={{ color: '#00C49F', fontWeight: 700 }}>{dashboardMetrics.activeCases}</Typography>
             </CardContent>
           </Card>
@@ -230,7 +230,7 @@ export default function AnalyticsPage() {
             }
           }}>
             <CardContent>
-              <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.6)', mb: 1 }}>Time Entries</Typography>
+              <Typography variant="body2" sx={{ color: '#000000', mb: 1 }}>Time Entries</Typography>
               <Typography variant="h4" sx={{ color: '#00D9FF', fontWeight: 700 }}>{dashboardMetrics.recentTimeEntries}</Typography>
             </CardContent>
           </Card>
@@ -248,7 +248,7 @@ export default function AnalyticsPage() {
             }
           }}>
             <CardContent>
-              <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.6)', mb: 1 }}>Pending Invoices</Typography>
+              <Typography variant="body2" sx={{ color: '#000000', mb: 1 }}>Pending Invoices</Typography>
               <Typography variant="h4" sx={{ color: '#FFC107', fontWeight: 700 }}>{dashboardMetrics.pendingInvoices}</Typography>
             </CardContent>
           </Card>
@@ -266,7 +266,7 @@ export default function AnalyticsPage() {
             }
           }}>
             <CardContent>
-              <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.6)', mb: 1 }}>Overdue</Typography>
+              <Typography variant="body2" sx={{ color: '#000000', mb: 1 }}>Overdue</Typography>
               <Typography variant="h4" sx={{ color: '#F44336', fontWeight: 700 }}>{dashboardMetrics.overdueInvoices}</Typography>
             </CardContent>
           </Card>
@@ -284,7 +284,7 @@ export default function AnalyticsPage() {
             }
           }}>
             <CardContent>
-              <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.6)', mb: 1 }}>Revenue</Typography>
+              <Typography variant="body2" sx={{ color: '#000000', mb: 1 }}>Revenue</Typography>
               <Typography variant="h4" sx={{ color: '#10B981', fontWeight: 700 }}>
                 ${dashboardMetrics.recentRevenue.toLocaleString()}
               </Typography>
@@ -303,12 +303,12 @@ export default function AnalyticsPage() {
             border: '1px solid rgba(255, 255, 255, 0.1)',
             borderRadius: '20px'
           }}>
-            <Typography variant="h6" sx={{ mb: 3, color: '#ffffff', fontWeight: 600 }}>Monthly Financial Trends</Typography>
+            <Typography variant="h6" sx={{ mb: 3, color: '#000000', fontWeight: 600 }}>Monthly Financial Trends</Typography>
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={financialData.monthlyTrends}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.1)" />
-                <XAxis dataKey="month" tick={{ fill: 'rgba(255, 255, 255, 0.7)' }} />
-                <YAxis tick={{ fill: 'rgba(255, 255, 255, 0.7)' }} />
+                <XAxis dataKey="month" tick={{ fill: '#000000' }} />
+                <YAxis tick={{ fill: '#000000' }} />
                 <Tooltip 
                   formatter={(value) => `$${Number(value).toLocaleString()}`}
                   contentStyle={{
@@ -318,7 +318,7 @@ export default function AnalyticsPage() {
                     color: '#ffffff'
                   }}
                 />
-                <Legend wrapperStyle={{ color: '#ffffff' }} />
+                <Legend wrapperStyle={{ color: '#000000' }} />
                 <Bar dataKey="invoiced" fill="#00D9FF" name="Invoiced" radius={[4, 4, 0, 0]} />
                 <Bar dataKey="paid" fill="#00C49F" name="Paid" radius={[4, 4, 0, 0]} />
                 <Bar dataKey="outstanding" fill="#FFC107" name="Outstanding" radius={[4, 4, 0, 0]} />
@@ -337,32 +337,32 @@ export default function AnalyticsPage() {
         border: '1px solid rgba(255, 255, 255, 0.1)',
         borderRadius: '20px'
       }}>
-        <Typography variant="h6" sx={{ mb: 3, color: '#ffffff', fontWeight: 600 }}>Staff Productivity</Typography>
+        <Typography variant="h6" sx={{ mb: 3, color: '#000000', fontWeight: 600 }}>Staff Productivity</Typography>
         <TableContainer>
           <Table>
             <TableHead>
               <TableRow>
-                <TableCell sx={{ color: 'rgba(255, 255, 255, 0.7)', borderBottom: '1px solid rgba(255, 255, 255, 0.1)', fontWeight: 600 }}>Staff Member</TableCell>
-                <TableCell sx={{ color: 'rgba(255, 255, 255, 0.7)', borderBottom: '1px solid rgba(255, 255, 255, 0.1)', fontWeight: 600 }}>Total Hours</TableCell>
-                <TableCell sx={{ color: 'rgba(255, 255, 255, 0.7)', borderBottom: '1px solid rgba(255, 255, 255, 0.1)', fontWeight: 600 }}>Billable Hours</TableCell>
-                <TableCell sx={{ color: 'rgba(255, 255, 255, 0.7)', borderBottom: '1px solid rgba(255, 255, 255, 0.1)', fontWeight: 600 }}>Utilization Rate</TableCell>
-                <TableCell sx={{ color: 'rgba(255, 255, 255, 0.7)', borderBottom: '1px solid rgba(255, 255, 255, 0.1)', fontWeight: 600 }}>Cases Worked</TableCell>
-                <TableCell sx={{ color: 'rgba(255, 255, 255, 0.7)', borderBottom: '1px solid rgba(255, 255, 255, 0.1)', fontWeight: 600 }}>Time Entries</TableCell>
+                <TableCell sx={{ color: '#000000', borderBottom: '1px solid rgba(255, 255, 255, 0.1)', fontWeight: 600 }}>Staff Member</TableCell>
+                <TableCell sx={{ color: '#000000', borderBottom: '1px solid rgba(255, 255, 255, 0.1)', fontWeight: 600 }}>Total Hours</TableCell>
+                <TableCell sx={{ color: '#000000', borderBottom: '1px solid rgba(255, 255, 255, 0.1)', fontWeight: 600 }}>Billable Hours</TableCell>
+                <TableCell sx={{ color: '#000000', borderBottom: '1px solid rgba(255, 255, 255, 0.1)', fontWeight: 600 }}>Utilization Rate</TableCell>
+                <TableCell sx={{ color: '#000000', borderBottom: '1px solid rgba(255, 255, 255, 0.1)', fontWeight: 600 }}>Cases Worked</TableCell>
+                <TableCell sx={{ color: '#000000', borderBottom: '1px solid rgba(255, 255, 255, 0.1)', fontWeight: 600 }}>Time Entries</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {productivityData.map((staff, index) => (
                 <TableRow key={index} sx={{ '&:hover': { backgroundColor: 'rgba(255, 255, 255, 0.05)' } }}>
-                  <TableCell sx={{ color: '#ffffff', borderBottom: '1px solid rgba(255, 255, 255, 0.05)' }}>{staff.user.name}</TableCell>
-                  <TableCell sx={{ color: '#ffffff', borderBottom: '1px solid rgba(255, 255, 255, 0.05)' }}>{staff.totalHours.toFixed(1)}h</TableCell>
+                  <TableCell sx={{ color: '#000000', borderBottom: '1px solid rgba(255, 255, 255, 0.05)' }}>{staff.user.name}</TableCell>
+                  <TableCell sx={{ color: '#000000', borderBottom: '1px solid rgba(255, 255, 255, 0.05)' }}>{staff.totalHours.toFixed(1)}h</TableCell>
                   <TableCell sx={{ color: '#00C49F', borderBottom: '1px solid rgba(255, 255, 255, 0.05)', fontWeight: 600 }}>{staff.billableHours.toFixed(1)}h</TableCell>
                   <TableCell sx={{ 
                     color: staff.utilizationRate >= 80 ? '#00C49F' : staff.utilizationRate >= 60 ? '#FFC107' : '#F44336',
                     borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
                     fontWeight: 600
                   }}>{staff.utilizationRate.toFixed(1)}%</TableCell>
-                  <TableCell sx={{ color: '#ffffff', borderBottom: '1px solid rgba(255, 255, 255, 0.05)' }}>{staff.casesWorked}</TableCell>
-                  <TableCell sx={{ color: '#ffffff', borderBottom: '1px solid rgba(255, 255, 255, 0.05)' }}>{staff.entries}</TableCell>
+                  <TableCell sx={{ color: '#000000', borderBottom: '1px solid rgba(255, 255, 255, 0.05)' }}>{staff.casesWorked}</TableCell>
+                  <TableCell sx={{ color: '#000000', borderBottom: '1px solid rgba(255, 255, 255, 0.05)' }}>{staff.entries}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -385,7 +385,7 @@ export default function AnalyticsPage() {
             }
           }}>
             <CardContent sx={{ p: 3 }}>
-              <Typography variant="h6" sx={{ color: 'rgba(255, 255, 255, 0.7)', mb: 2 }}>Total Invoiced</Typography>
+              <Typography variant="h6" sx={{ color: '#000000', mb: 2 }}>Total Invoiced</Typography>
               <Typography variant="h4" sx={{ color: '#00D9FF', fontWeight: 700 }}>
                 ${financialData.summary.totalInvoiced.toLocaleString()}
               </Typography>
@@ -405,7 +405,7 @@ export default function AnalyticsPage() {
             }
           }}>
             <CardContent sx={{ p: 3 }}>
-              <Typography variant="h6" sx={{ color: 'rgba(255, 255, 255, 0.7)', mb: 2 }}>Total Paid</Typography>
+              <Typography variant="h6" sx={{ color: '#000000', mb: 2 }}>Total Paid</Typography>
               <Typography variant="h4" sx={{ color: '#00C49F', fontWeight: 700 }}>
                 ${financialData.summary.totalPaid.toLocaleString()}
               </Typography>
@@ -425,7 +425,7 @@ export default function AnalyticsPage() {
             }
           }}>
             <CardContent sx={{ p: 3 }}>
-              <Typography variant="h6" sx={{ color: 'rgba(255, 255, 255, 0.7)', mb: 2 }}>Average Invoice</Typography>
+              <Typography variant="h6" sx={{ color: '#000000', mb: 2 }}>Average Invoice</Typography>
               <Typography variant="h4" sx={{ color: '#10B981', fontWeight: 700 }}>
                 ${financialData.summary.averageInvoiceValue.toLocaleString()}
               </Typography>

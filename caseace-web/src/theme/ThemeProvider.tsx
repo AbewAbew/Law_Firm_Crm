@@ -8,70 +8,70 @@ import { AppRouterCacheProvider } from '@mui/material-nextjs/v13-appRouter';
 
 const theme = createTheme({
   palette: {
-    mode: 'dark',
+    mode: 'light',
     primary: {
-      main: '#00C49F',
-      light: '#00D9FF',
-      dark: '#10B981',
+      main: '#000000',
+      light: '#333333',
+      dark: '#000000',
     },
     secondary: {
-      main: '#8B5CF6',
-      light: '#A78BFA',
-      dark: '#7C3AED',
+      main: '#666666',
+      light: '#999999',
+      dark: '#333333',
     },
     background: {
-      default: '#0f1419',
-      paper: 'rgba(255, 255, 255, 0.05)',
+      default: '#f7f7f8',
+      paper: '#ffffff',
     },
     text: {
-      primary: '#ffffff',
-      secondary: 'rgba(255, 255, 255, 0.7)',
+      primary: '#000000',
+      secondary: '#666666',
     },
     success: {
       main: '#10B981',
     },
     warning: {
-      main: '#FFC107',
+      main: '#F59E0B',
     },
     error: {
-      main: '#F44336',
+      main: '#EF4444',
     },
     info: {
-      main: '#00D9FF',
+      main: '#3B82F6',
     },
   },
   typography: {
     fontFamily: 'Inter, system-ui, sans-serif',
     h1: {
       fontWeight: 700,
-      color: '#ffffff',
+      color: '#000000',
     },
     h2: {
       fontWeight: 600,
-      color: '#ffffff',
+      color: '#000000',
     },
     h3: {
       fontWeight: 600,
-      color: '#ffffff',
+      color: '#000000',
     },
     h4: {
       fontWeight: 600,
-      color: '#ffffff',
+      color: '#000000',
     },
     h5: {
       fontWeight: 600,
-      color: '#ffffff',
+      color: '#000000',
     },
     h6: {
       fontWeight: 600,
-      color: '#ffffff',
+      color: '#000000',
     },
   },
   components: {
     MuiCssBaseline: {
       styleOverrides: {
         body: {
-          background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)',
+          background: '#f7f7f8',
           minHeight: '100vh',
         },
       },
@@ -79,25 +79,19 @@ const theme = createTheme({
     MuiCard: {
       styleOverrides: {
         root: {
-          background: 'rgba(255, 255, 255, 0.05)',
-          backdropFilter: 'blur(10px)',
-          border: '1px solid rgba(255, 255, 255, 0.1)',
-          borderRadius: '16px',
-          transition: 'all 0.3s ease',
-          '&:hover': {
-            transform: 'translateY(-2px)',
-            boxShadow: '0 10px 30px rgba(0, 196, 159, 0.1)',
-          },
+          background: '#ffffff',
+          border: '1px solid #e5e7eb',
+          borderRadius: '8px',
+          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
         },
       },
     },
     MuiPaper: {
       styleOverrides: {
         root: {
-          background: 'rgba(255, 255, 255, 0.05)',
-          backdropFilter: 'blur(10px)',
-          border: '1px solid rgba(255, 255, 255, 0.1)',
-          borderRadius: '16px',
+          background: '#ffffff',
+          border: '1px solid #e5e7eb',
+          borderRadius: '8px',
         },
       },
     },
@@ -105,23 +99,23 @@ const theme = createTheme({
       styleOverrides: {
         root: {
           '& .MuiOutlinedInput-root': {
-            backgroundColor: 'rgba(255, 255, 255, 0.05)',
-            borderRadius: '12px',
+            backgroundColor: '#ffffff',
+            borderRadius: '8px',
             '& fieldset': {
-              borderColor: 'rgba(255, 255, 255, 0.1)',
+              borderColor: '#d1d5db',
             },
             '&:hover fieldset': {
-              borderColor: '#00C49F',
+              borderColor: '#9ca3af',
             },
             '&.Mui-focused fieldset': {
-              borderColor: '#00C49F',
+              borderColor: '#000000',
             },
           },
           '& .MuiInputLabel-root': {
-            color: 'rgba(255, 255, 255, 0.7)',
+            color: '#6b7280',
           },
           '& .MuiInputBase-input': {
-            color: '#ffffff',
+            color: '#000000',
           },
         },
       },
@@ -129,16 +123,17 @@ const theme = createTheme({
     MuiButton: {
       styleOverrides: {
         root: {
-          borderRadius: '12px',
+          borderRadius: '8px',
           textTransform: 'none',
-          fontWeight: 600,
+          fontWeight: 500,
         },
         contained: {
-          background: 'linear-gradient(135deg, #00C49F 0%, #10B981 100%)',
-          boxShadow: '0 4px 15px rgba(0, 196, 159, 0.3)',
+          background: '#000000',
+          color: '#ffffff',
+          boxShadow: 'none',
           '&:hover': {
-            background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
-            boxShadow: '0 6px 20px rgba(0, 196, 159, 0.4)',
+            background: '#333333',
+            boxShadow: 'none',
           },
         },
       },
@@ -146,11 +141,11 @@ const theme = createTheme({
     MuiTableCell: {
       styleOverrides: {
         root: {
-          borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
-          color: '#ffffff',
+          borderBottom: '1px solid #e5e7eb',
+          color: '#000000',
         },
         head: {
-          color: 'rgba(255, 255, 255, 0.7)',
+          color: '#374151',
           fontWeight: 600,
         },
       },
@@ -159,7 +154,7 @@ const theme = createTheme({
       styleOverrides: {
         root: {
           '&:hover': {
-            backgroundColor: 'rgba(255, 255, 255, 0.05)',
+            backgroundColor: '#f9fafb',
           },
         },
       },
@@ -167,18 +162,17 @@ const theme = createTheme({
     MuiAppBar: {
       styleOverrides: {
         root: {
-          background: 'rgba(255, 255, 255, 0.05)',
-          backdropFilter: 'blur(10px)',
-          border: '1px solid rgba(255, 255, 255, 0.1)',
+          background: '#ffffff',
+          border: '1px solid #e5e7eb',
+          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
         },
       },
     },
     MuiDrawer: {
       styleOverrides: {
         paper: {
-          background: 'rgba(26, 26, 46, 0.95)',
-          backdropFilter: 'blur(10px)',
-          border: '1px solid rgba(255, 255, 255, 0.1)',
+          background: '#ffffff',
+          border: '1px solid #e5e7eb',
         },
       },
     },

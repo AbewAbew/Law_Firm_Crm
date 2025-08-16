@@ -594,7 +594,7 @@ export default function BillingPage() {
                             {entry.user?.name?.split(' ').map((n: string) => n[0]).join('') || 'N/A'}
                           </td>
                           <td style={{ border: '1px solid #333', padding: '8px' }}>
-                            <strong>{entry.type.replace('_', ' ')}:</strong> {entry.description}
+                            <strong>{entry.type ? entry.type.replace('_', ' ') : 'Service'}:</strong> {entry.description}
                           </td>
                           <td style={{ border: '1px solid #333', padding: '8px', textAlign: 'right' }}>
                             {entry.duration ? (entry.duration / 60).toFixed(2) : '0.00'}
@@ -637,7 +637,7 @@ export default function BillingPage() {
                             {expense.user?.name?.split(' ').map((n: string) => n[0]).join('') || 'N/A'}
                           </td>
                           <td style={{ border: '1px solid #333', padding: '8px' }}>
-                            <strong>{expense.type.replace('_', ' ')}:</strong> {expense.description}
+                            <strong>{expense.type ? expense.type.replace('_', ' ') : 'Expense'}:</strong> {expense.description}
                           </td>
                           <td style={{ border: '1px solid #333', padding: '8px', textAlign: 'right' }}>
                             ${expense.amount.toFixed(2)}

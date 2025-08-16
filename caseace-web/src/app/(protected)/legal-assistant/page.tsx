@@ -8,7 +8,7 @@ export default function LegalAssistantPage() {
     <Box sx={{ p: 3, height: 'calc(100vh - 100px)' }}>
       <Typography variant="h4" sx={{ 
         mb: 3, 
-        color: '#ffffff',
+        color: '#000000',
         fontWeight: 600,
         fontSize: '2rem'
       }}>

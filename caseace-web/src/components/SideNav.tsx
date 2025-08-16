@@ -90,9 +90,8 @@ export default function SideNav() {
         [`& .MuiDrawer-paper`]: {
           width: drawerWidth,
           boxSizing: 'border-box',
-          background: 'rgba(26, 26, 46, 0.95)',
-          backdropFilter: 'blur(10px)',
-          borderRight: '1px solid rgba(255, 255, 255, 0.1)',
+          background: '#ffffff',
+          borderRight: '1px solid #e5e7eb',
         },
       }}
     >
@@ -118,15 +117,15 @@ export default function SideNav() {
                   mx: 1,
                   transition: 'all 0.3s ease',
                   '&:hover': {
-                    background: 'rgba(0, 196, 159, 0.1)',
+                    background: '#f3f4f6',
                     transform: 'translateX(4px)',
                   },
                   '& .MuiListItemIcon-root': {
-                    color: '#00C49F',
+                    color: '#374151',
                     minWidth: '40px',
                   },
                   '& .MuiListItemText-primary': {
-                    color: '#ffffff',
+                    color: '#000000',
                     fontWeight: 500,
                   },
                 }}
@@ -137,7 +136,7 @@ export default function SideNav() {
             </ListItem>
           ))}
         </List>
-        <Divider sx={{ borderColor: 'rgba(255, 255, 255, 0.1)', mx: 2 }} />
+        <Divider sx={{ borderColor: '#e5e7eb', mx: 2 }} />
         <List sx={{ px: 1 }}>
           <ListItem disablePadding>
             <ListItemButton 
@@ -148,15 +147,15 @@ export default function SideNav() {
                 mb: 1,
                 transition: 'all 0.3s ease',
                 '&:hover': {
-                  background: 'rgba(244, 67, 54, 0.1)',
+                  background: '#fef2f2',
                   transform: 'translateX(4px)',
                 },
                 '& .MuiListItemIcon-root': {
-                  color: '#F44336',
+                  color: '#dc2626',
                   minWidth: '40px',
                 },
                 '& .MuiListItemText-primary': {
-                  color: '#ffffff',
+                  color: '#dc2626',
                   fontWeight: 500,
                 },
               }}

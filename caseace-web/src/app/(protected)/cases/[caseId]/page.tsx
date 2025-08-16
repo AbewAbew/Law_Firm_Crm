@@ -670,7 +670,7 @@ function CommunicationsView({ caseId }: { caseId: string }) {
               bgcolor: 'primary.main',
               color: 'white'
             }}>
-              <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1, color: 'white' }}>
                 💬 Case Communications
                 <Box sx={{ 
                   ml: 'auto', 
@@ -678,7 +678,8 @@ function CommunicationsView({ caseId }: { caseId: string }) {
                   py: 0.5, 
                   bgcolor: 'rgba(255,255,255,0.2)', 
                   borderRadius: 2,
-                  fontSize: '0.75rem'
+                  fontSize: '0.75rem',
+                  color: 'white'
                 }}>
                   {messages.length} messages
                 </Box>
@@ -818,10 +819,10 @@ function CommunicationsView({ caseId }: { caseId: string }) {
                         borderColor: 'primary.main'
                       },
                       '& input': {
-                        color: '#000000 !important'
+                        color: '#333333 !important'
                       },
                       '& textarea': {
-                        color: '#000000 !important'
+                        color: '#333333 !important'
                       }
                     },
                     '& .MuiInputBase-input::placeholder': {
