@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import RoleGuard from '@/components/RoleGuard';
+import LazyWrapper from '@/components/LazyWrapper';
+import { useOptimizedFetch } from '@/hooks/useOptimizedFetch';
 import {
   Box,
   Typography,
@@ -88,16 +90,19 @@ export default function DashboardPage() {
   const [allTimeEntries, setAllTimeEntries] = useState<RecentTimeEntry[]>([]);
   const [timeEntriesModalOpen, setTimeEntriesModalOpen] = useState(false);
 
+  // Use optimized fetch with caching
+  const { data: cachedDashboardData } = useOptimizedFetch<DashboardData>('/analytics/dashboard', 'dashboard-metrics', 10);
+  const { data: cachedRecentCases } = useOptimizedFetch<RecentCase[]>('/analytics/recent-cases?limit=5', 'recent-cases', 5);
+  const { data: cachedTimeEntries } = useOptimizedFetch<RecentTimeEntry[]>('/analytics/recent-time-entries?limit=5', 'recent-time-entries', 5);
+
   useEffect(() => {
-    // Option 1: Keep existing separate calls (current workflow)
-    fetchDashboardData();
-    fetchRecentCases();
-    fetchRecentTimeEntries();
-    fetchUpcomingAppointments();
+    if (cachedDashboardData) setDashboardData(cachedDashboardData);
+    if (cachedRecentCases) setRecentCases(cachedRecentCases);
+    if (cachedTimeEntries) setRecentTimeEntries(cachedTimeEntries);
     
-    // Option 2: Use single combined call (uncomment to enable)
-    // fetchAllDashboardData();
-  }, []);
+    // Fetch appointments separately (less cacheable)
+    fetchUpcomingAppointments();
+  }, [cachedDashboardData, cachedRecentCases, cachedTimeEntries]);
 
   const fetchDashboardData = async () => {
     try {
@@ -284,9 +289,10 @@ export default function DashboardPage() {
       {/* Recent Activity */}
       <Grid container spacing={3}>
         <Grid item xs={12} md={4}>
-          <Paper sx={{ p: 2 }}>
-            <Typography variant="h6" sx={{ mb: 2 }}>Recent Cases</Typography>
-            <TableContainer>
+          <LazyWrapper height={300}>
+            <Paper sx={{ p: 2 }}>
+              <Typography variant="h6" sx={{ mb: 2 }}>Recent Cases</Typography>
+              <TableContainer>
               <Table size="small">
                 <TableHead>
                   <TableRow>
@@ -319,11 +325,13 @@ export default function DashboardPage() {
             >
               View All Cases
             </Button>
-          </Paper>
+            </Paper>
+          </LazyWrapper>
         </Grid>
 
         <Grid item xs={12} md={4}>
-          <Paper sx={{ p: 2 }}>
+          <LazyWrapper height={300}>
+            <Paper sx={{ p: 2 }}>
             <Typography variant="h6" sx={{ mb: 2 }}>Recent Time Entries</Typography>
             <List>
               {recentTimeEntries.map((entry) => (
@@ -345,11 +353,13 @@ export default function DashboardPage() {
             >
               View All Time Entries
             </Button>
-          </Paper>
+            </Paper>
+          </LazyWrapper>
         </Grid>
 
         <Grid item xs={12} md={4}>
-          <Paper sx={{ p: 2 }}>
+          <LazyWrapper height={300}>
+            <Paper sx={{ p: 2 }}>
             <Typography variant="h6" sx={{ mb: 2 }}>Upcoming Appointments</Typography>
             <List>
               {upcomingAppointments.map((appointment) => (
@@ -371,7 +381,8 @@ export default function DashboardPage() {
             >
               View All Appointments
             </Button>
-          </Paper>
+            </Paper>
+          </LazyWrapper>
         </Grid>
       </Grid>
 

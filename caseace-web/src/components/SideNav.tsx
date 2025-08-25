@@ -23,11 +23,11 @@ import TaskIcon from '@mui/icons-material/Task';
 import SmartToyIcon from '@mui/icons-material/SmartToy';
 import LogoutIcon from '@mui/icons-material/Logout';
 import { Divider } from '@mui/material';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import api from '@/lib/axios';
 import toast from 'react-hot-toast';
 import Image from 'next/image';
+import PrefetchLink from './PrefetchLinks';
 
 const drawerWidth = 240;
 
@@ -109,9 +109,8 @@ export default function SideNav() {
         <List sx={{ flexGrow: 1, px: 1 }}>
           {menuItems.map((item) => (
             <ListItem key={item.text} disablePadding sx={{ mb: 0.5 }}>
-              <ListItemButton 
-                component={Link} 
-                href={item.href}
+              <PrefetchLink href={item.href}>
+                <ListItemButton
                 sx={{
                   borderRadius: '12px',
                   mx: 1,
@@ -130,9 +129,10 @@ export default function SideNav() {
                   },
                 }}
               >
-                <ListItemIcon>{item.icon}</ListItemIcon>
-                <ListItemText primary={item.text} />
-              </ListItemButton>
+                  <ListItemIcon>{item.icon}</ListItemIcon>
+                  <ListItemText primary={item.text} />
+                </ListItemButton>
+              </PrefetchLink>
             </ListItem>
           ))}
         </List>
