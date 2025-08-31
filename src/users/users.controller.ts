@@ -16,6 +16,12 @@ export class UsersController {
     return this.usersService.findAll();
   }
 
+  @Get(':id')
+  @Roles(UserRole.PARTNER)
+  findOne(@Param('id') id: string) {
+    return this.usersService.getUserRelatedRecords(id);
+  }
+
   @Patch(':id')
   @Roles(UserRole.PARTNER)
   update(@Param('id') id: string, @Body() updateData: { name?: string; role?: UserRole }) {

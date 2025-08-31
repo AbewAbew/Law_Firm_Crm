@@ -22,7 +22,7 @@ import {
   IconButton,
   Pagination,
 } from '@mui/material';
-import { Add, Edit, Delete } from '@mui/icons-material';
+import { Add, Edit, Delete, Info } from '@mui/icons-material';
 import RoleGuard from '@/components/RoleGuard';
 import api from '@/lib/axios';
 import toast from 'react-hot-toast';
@@ -73,7 +73,7 @@ export default function UsersPage() {
 
   const handleRoleFilter = (selectedRole: string) => {
     setRoleFilter(selectedRole);
-    setPage(1); // Reset to first page when filter changes
+    setPage(1);
     if (selectedRole === 'ALL') {
       setFilteredUsers(users);
     } else {
@@ -85,7 +85,6 @@ export default function UsersPage() {
     setPage(value);
   };
 
-  // Calculate pagination
   const totalPages = Math.ceil(filteredUsers.length / usersPerPage);
   const startIndex = (page - 1) * usersPerPage;
   const paginatedUsers = filteredUsers.slice(startIndex, startIndex + usersPerPage);
@@ -129,8 +128,8 @@ export default function UsersPage() {
         await api.delete(`/users/${id}`);
         toast.success('User deleted successfully');
         fetchUsers();
-      } catch (error) {
-        toast.error('Failed to delete user');
+      } catch (error: any) {
+        toast.error(error.response?.data?.message || 'Failed to delete user');
       }
     }
   };
@@ -144,7 +143,7 @@ export default function UsersPage() {
     });
   };
 
-  const getRoleColor = (role: string) => {
+  const getRoleColor = (role: string): 'error' | 'warning' | 'info' | 'default' => {
     switch (role) {
       case 'PARTNER': return 'error';
       case 'ASSOCIATE': return 'warning';
@@ -212,10 +211,10 @@ export default function UsersPage() {
                     {new Date(user.createdAt).toLocaleDateString()}
                   </TableCell>
                   <TableCell>
-                    <IconButton onClick={() => handleEdit(user)}>
+                    <IconButton onClick={() => handleEdit(user)} title="Edit User">
                       <Edit />
                     </IconButton>
-                    <IconButton onClick={() => handleDelete(user.id)}>
+                    <IconButton onClick={() => handleDelete(user.id)} title="Delete User">
                       <Delete />
                     </IconButton>
                   </TableCell>
@@ -225,7 +224,6 @@ export default function UsersPage() {
           </Table>
         </TableContainer>
 
-        {/* Pagination */}
         {filteredUsers.length > usersPerPage && (
           <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
             <Pagination

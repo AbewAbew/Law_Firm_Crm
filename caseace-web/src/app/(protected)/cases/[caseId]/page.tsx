@@ -30,6 +30,9 @@ import {
   Stack,
   MenuItem,
 } from '@mui/material';
+import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import api from '@/lib/axios';
 import { useParams } from 'next/navigation';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
@@ -482,17 +485,14 @@ function TasksView({ caseId }: { caseId: string }) {
               value={form.description}
               onChange={handleChange}
             />
-            <TextField
-              margin="dense"
-              name="deadline"
-              label="Deadline"
-              type="date"
-              fullWidth
-              variant="outlined"
-              value={form.deadline}
-              onChange={handleChange}
-              InputLabelProps={{ shrink: true }}
-            />
+            <LocalizationProvider dateAdapter={AdapterDateFns}>
+              <DateTimePicker
+                label="Deadline"
+                value={form.deadline ? new Date(form.deadline) : null}
+                onChange={(newValue) => setForm({ ...form, deadline: newValue ? newValue.toISOString() : '' })}
+                slotProps={{ textField: { fullWidth: true, variant: 'outlined', margin: 'dense' } }}
+              />
+            </LocalizationProvider>
           </Stack>
         </DialogContent>
         <DialogActions>
