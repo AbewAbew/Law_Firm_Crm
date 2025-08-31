@@ -3,6 +3,7 @@
 
 import SideNav from '@/components/SideNav';
 import ClientRedirect from '@/components/ClientRedirect';
+import NotificationToast from '@/components/NotificationToast';
 import { useAuthStore } from '@/store/authStore';
 import { Box, CircularProgress, Toolbar } from '@mui/material';
 import { useRouter } from 'next/navigation';
@@ -48,6 +49,7 @@ export default function ProtectedLayout({
         <Toolbar />
         {children}
       </Box>
+      <NotificationToast />
     </Box>
   );
 }

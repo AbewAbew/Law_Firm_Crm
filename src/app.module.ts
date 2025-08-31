@@ -13,6 +13,7 @@ import { TimeTrackingModule } from './time-tracking/time-tracking.module';
 import { BillingModule } from './billing/billing.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { CommunicationsModule } from './communications/communications.module';
+import { NotificationsModule } from './notifications/notifications.module';
 
 @Module({
   imports: [
@@ -26,7 +27,8 @@ import { CommunicationsModule } from './communications/communications.module';
     TimeTrackingModule,
     BillingModule,
     AnalyticsModule,
-    CommunicationsModule
+    CommunicationsModule,
+    NotificationsModule
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -122,6 +122,29 @@ enum LeadSource {
   OTHER
 }
 
+enum NotificationType {
+  CASE_ASSIGNMENT
+  TASK_ASSIGNMENT
+  TASK_DUE_SOON
+  TASK_OVERDUE
+  APPOINTMENT_REMINDER
+  DOCUMENT_UPLOADED
+  INVOICE_GENERATED
+  PAYMENT_RECEIVED
+  CASE_STATUS_CHANGE
+  MESSAGE_RECEIVED
+  DOCUMENT_REQUEST
+  TIME_ENTRY_APPROVAL
+  SYSTEM_ANNOUNCEMENT
+}
+
+enum NotificationPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
 // MODELS: These will become tables in your database
 
 model User {
@@ -155,6 +178,8 @@ model User {
   messagesSent       Message[]             @relation("MessageSender")
   documentRequests   DocumentRequest[]     @relation("DocumentRequestCreator")
   activeTimer        ActiveTimer?
+  notifications      Notification[]        @relation("NotificationRecipient")
+  notificationPrefs  NotificationPreference[]
 }
 
 model Case {
@@ -187,6 +212,7 @@ model Case {
   messages        Message[]
   documentRequests DocumentRequest[]
   activeTimers    ActiveTimer[]
+  notifications   Notification[]
 
   @@index([clientId])
   @@index([status])
@@ -214,6 +240,7 @@ model Task {
   assignedToId     String
   timeEntries      TimeEntry[]
   activeTimers     ActiveTimer[]
+  notifications    Notification[]
 
   @@index([caseId])
   @@index([assignedToId])
@@ -503,4 +530,43 @@ model ActiveTimer {
   startTime   DateTime      @default(now())
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
+}
+
+model Notification {
+  id          String              @id @default(cuid())
+  type        NotificationType
+  title       String
+  message     String
+  priority    NotificationPriority @default(MEDIUM)
+  isRead      Boolean             @default(false)
+  
+  recipient   User                @relation("NotificationRecipient", fields: [recipientId], references: [id])
+  recipientId String
+  
+  caseId      String?
+  case        Case?               @relation(fields: [caseId], references: [id])
+  taskId      String?
+  task        Task?               @relation(fields: [taskId], references: [id])
+  
+  data        Json?
+  expiresAt   DateTime?
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+  
+  @@index([recipientId, isRead])
+  @@index([type])
+  @@index([createdAt])
+}
+
+model NotificationPreference {
+  id                String              @id @default(cuid())
+  user              User                @relation(fields: [userId], references: [id])
+  userId            String
+  notificationType  NotificationType
+  emailEnabled      Boolean             @default(true)
+  inAppEnabled      Boolean             @default(true)
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  
+  @@unique([userId, notificationType])
 }

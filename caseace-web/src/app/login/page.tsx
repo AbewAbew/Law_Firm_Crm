@@ -66,7 +66,7 @@ export default function LoginPage() {
           style={{ marginBottom: '16px' }}
         />
         <Typography component="h1" variant="h5">
-          MLA Sign In
+          TBEST Sign In
         </Typography>
         <Box
           component="form"

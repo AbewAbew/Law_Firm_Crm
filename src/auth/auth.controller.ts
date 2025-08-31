@@ -57,6 +57,21 @@ export class AuthController {
     return req.user;
   }
 
+  @UseGuards(AuthGuard)
+  @Get('me')
+  async getMe(@Request() req) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: req.user.sub },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+      },
+    });
+    return user;
+  }
+
   @UseGuards(AuthGuard, RolesGuard)
   @Get('users')
   @Roles(UserRole.PARTNER, UserRole.ASSOCIATE, UserRole.PARALEGAL)

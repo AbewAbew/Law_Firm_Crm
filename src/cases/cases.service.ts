@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, BadRequestException, Logger } from '@nes
 import { UserRole } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { EmailService } from 'src/email/email.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { CreateCaseDto } from './dto/create-case.dto';
 import { UpdateCaseDto } from './dto/update-case.dto';
 import * as bcrypt from 'bcrypt';
@@ -33,6 +34,7 @@ export class CasesService {
   constructor(
     private prisma: PrismaService,
     private emailService: EmailService,
+    private notificationsService: NotificationsService,
   ) {}
 
   async create(createCaseDto: CreateCaseDto, user?: AuthenticatedUser) {
@@ -89,6 +91,36 @@ export class CasesService {
       
       return newCase;
     });
+    
+    // Send notifications after successful case creation
+    try {
+      // Notify partners of new case
+      await this.notificationsService.notifyRoleBasedUsers(
+        [UserRole.PARTNER],
+        'CASE_STATUS_CHANGE',
+        'New Case Created',
+        `A new case "${result.caseName}" has been created and requires review`,
+        { caseId: result.id, excludeUserId: user?.userId || user?.sub, priority: 'MEDIUM' }
+      );
+      
+      // Notify assigned users if any
+      if (assignedUserIds?.length) {
+        await Promise.all(
+          assignedUserIds.map(userId =>
+            this.notificationsService.create({
+              type: 'CASE_ASSIGNMENT',
+              title: 'New Case Assignment',
+              message: `You have been assigned to case: ${result.caseName}`,
+              recipientId: userId,
+              caseId: result.id,
+              priority: 'HIGH',
+            })
+          )
+        );
+      }
+    } catch (error) {
+      this.logger.error('Failed to send case creation notifications', error);
+    }
     
     return {
       ...result,
@@ -392,6 +424,24 @@ export class CasesService {
         data: validatedData
       });
     });
+    
+    // Send notifications to newly assigned users
+    try {
+      await Promise.all(
+        validUsers.map(user =>
+          this.notificationsService.create({
+            type: 'CASE_ASSIGNMENT',
+            title: 'New Case Assignment',
+            message: `You have been assigned to case: ${caseExists.caseName}`,
+            recipientId: user.id,
+            caseId,
+            priority: 'HIGH',
+          })
+        )
+      );
+    } catch (error) {
+      this.logger.error('Failed to send case assignment notifications', error);
+    }
     
     return { 
       message: 'Case assignments updated successfully',

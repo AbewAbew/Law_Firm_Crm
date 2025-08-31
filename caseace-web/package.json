@@ -22,7 +22,7 @@
     "@mui/icons-material": "^5.15.20",
     "@mui/material": "^5.15.20",
     "@mui/material-nextjs": "^5.15.11",
-    "@mui/x-date-pickers": "^8.10.0",
+    "@mui/x-date-pickers": "^8.11.0",
     "@types/nprogress": "^0.2.3",
     "appwrite": "^18.2.0",
     "axios": "^1.7.2",

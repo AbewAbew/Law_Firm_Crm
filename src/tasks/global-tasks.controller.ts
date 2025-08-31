@@ -7,6 +7,7 @@ import {
   UseGuards,
   Request,
   Patch,
+  Delete,
 } from '@nestjs/common';
 import { TasksService } from './tasks.service';
 import { CreateTaskDto } from './dto/create-task.dto';
@@ -37,5 +38,11 @@ export class GlobalTasksController {
   @Roles(UserRole.PARTNER, UserRole.ASSOCIATE, UserRole.PARALEGAL)
   update(@Param('id') id: string, @Body() updateTaskDto: UpdateTaskDto, @Request() req) {
     return this.tasksService.update(id, updateTaskDto, req.user);
+  }
+
+  @Delete(':id')
+  @Roles(UserRole.PARTNER)
+  remove(@Param('id') id: string) {
+    return this.tasksService.remove(id);
   }
 }

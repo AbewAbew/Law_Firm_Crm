@@ -16,6 +16,7 @@ import {
   TextField,
   MenuItem,
   Grid,
+  Autocomplete,
 } from '@mui/material';
 import { Add, Delete } from '@mui/icons-material';
 import {
@@ -230,6 +231,7 @@ export default function TasksPage() {
     assignedToId: '',
     deadline: '',
   });
+  const [selectedCaseFilter, setSelectedCaseFilter] = useState<Case | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -395,9 +397,14 @@ export default function TasksPage() {
     }
   };
 
-  const todoTasks = tasks.filter(t => t.status === 'TODO');
-  const workingTasks = tasks.filter(t => t.status === 'WORKING' || t.status === 'IN_PROGRESS');
-  const doneTasks = tasks.filter(t => t.status === 'DONE');
+  // Filter tasks by selected case
+  const filteredTasks = selectedCaseFilter 
+    ? tasks.filter(t => t.case.id === selectedCaseFilter.id)
+    : tasks;
+
+  const todoTasks = filteredTasks.filter(t => t.status === 'TODO');
+  const workingTasks = filteredTasks.filter(t => t.status === 'WORKING' || t.status === 'IN_PROGRESS');
+  const doneTasks = filteredTasks.filter(t => t.status === 'DONE');
 
   console.log('All tasks:', tasks.length);
   console.log('Current user role:', currentUser?.role);
@@ -408,19 +415,38 @@ export default function TasksPage() {
   return (
     <RoleGuard allowedRoles={['PARTNER', 'ASSOCIATE', 'PARALEGAL']}>
       <Box sx={{ p: 3 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
           <Typography variant="h4">
             Task Board {currentUser?.role === 'PARTNER' ? '- All Tasks Overview' : '- My Tasks'}
           </Typography>
-          {currentUser?.role !== 'CLIENT' && (
-            <Button
-              variant="contained"
-              startIcon={<Add />}
-              onClick={() => setOpenDialog(true)}
-            >
-              Add Task
-            </Button>
-          )}
+          <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+            <Autocomplete
+              options={cases}
+              getOptionLabel={(option) => option.caseName}
+              value={selectedCaseFilter}
+              onChange={(_, newValue) => setSelectedCaseFilter(newValue)}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="Filter by Case"
+                  size="small"
+                  placeholder="Type or select a case"
+                />
+              )}
+              sx={{ minWidth: 250 }}
+              clearOnEscape
+              blurOnSelect
+            />
+            {currentUser?.role !== 'CLIENT' && (
+              <Button
+                variant="contained"
+                startIcon={<Add />}
+                onClick={() => setOpenDialog(true)}
+              >
+                Add Task
+              </Button>
+            )}
+          </Box>
         </Box>
 
         <DndContext

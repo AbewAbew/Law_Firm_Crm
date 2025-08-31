@@ -25,10 +25,18 @@ import {
   CardContent,
   Grid,
   Checkbox,
+  Pagination,
+  Autocomplete,
+  Tabs,
+  Tab,
 } from '@mui/material';
+import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { Add, Edit, Delete, PlayArrow, Stop, Cancel, Receipt, SelectAll } from '@mui/icons-material';
 import api from '@/lib/axios';
 import toast from 'react-hot-toast';
+import { useAuthStore } from '@/store/authStore';
 
 interface TimeEntry {
   id: string;
@@ -43,6 +51,7 @@ interface TimeEntry {
   invoiceStatus: string;
   billableAmount: number | null;
   case: { id: string; caseName: string } | null;
+  user?: { id: string; name: string; role: string };
 }
 
 interface Case {
@@ -60,12 +69,17 @@ interface ActiveTimer {
 }
 
 export default function TimeTrackingPage() {
+  const { user } = useAuthStore();
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
   const [cases, setCases] = useState<Case[]>([]);
   const [activeTimer, setActiveTimer] = useState<ActiveTimer | null>(null);
   const [elapsedTime, setElapsedTime] = useState(0);
   const [billingSummary, setBillingSummary] = useState({ unbilled: { amount: 0, count: 0 }, billed: { amount: 0, count: 0 }, paid: { amount: 0, count: 0 } });
   const [selectedEntries, setSelectedEntries] = useState<string[]>([]);
+  const [page, setPage] = useState(1);
+  const entriesPerPage = 10;
+  const [selectedCaseFilter, setSelectedCaseFilter] = useState<Case | null>(null);
+  const [currentTab, setCurrentTab] = useState(0);
   const [openDialog, setOpenDialog] = useState(false);
   const [openTimerDialog, setOpenTimerDialog] = useState(false);
   const [editingEntry, setEditingEntry] = useState<TimeEntry | null>(null);
@@ -78,6 +92,9 @@ export default function TimeTrackingPage() {
     billable: true,
     rate: 250,
   });
+  const [timeInputMode, setTimeInputMode] = useState<'datetime' | 'duration'>('duration');
+  const [durationHours, setDurationHours] = useState(1);
+  const [durationMinutes, setDurationMinutes] = useState(0);
 
   const [timerForm, setTimerForm] = useState({
     caseId: '',
@@ -92,11 +109,24 @@ export default function TimeTrackingPage() {
   ];
 
   useEffect(() => {
-    fetchTimeEntries();
     fetchCases();
-    fetchActiveTimer();
-    fetchBillingSummary();
-  }, []);
+    if (user) {
+      fetchTimeEntries();
+      fetchActiveTimer();
+      if (user.role === 'PARTNER' && currentTab === 0) {
+        fetchBillingSummary();
+      }
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (user) {
+      fetchTimeEntries();
+      if (user.role === 'PARTNER' && currentTab === 0) {
+        fetchBillingSummary();
+      }
+    }
+  }, [currentTab, user]);
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -112,7 +142,10 @@ export default function TimeTrackingPage() {
 
   const fetchTimeEntries = async () => {
     try {
-      const response = await api.get('/time-tracking');
+      const endpoint = user?.role === 'PARTNER' && currentTab === 0 
+        ? '/time-tracking/all-staff' 
+        : '/time-tracking';
+      const response = await api.get(endpoint);
       setTimeEntries(response.data);
     } catch (error) {
       toast.error('Failed to fetch time entries');
@@ -129,11 +162,22 @@ export default function TimeTrackingPage() {
   };
 
   const fetchBillingSummary = async () => {
+    if (!user?.sub) {
+      console.log('No user ID available, skipping billing summary');
+      return;
+    }
+    
     try {
-      const response = await api.get('/time-tracking/billing-summary');
+      const endpoint = user?.role === 'PARTNER' && currentTab === 0 
+        ? '/time-tracking/billing-summary/all-staff' 
+        : '/time-tracking/billing-summary';
+      console.log('Fetching billing summary:', { endpoint, userId: user.sub, currentTab });
+      const response = await api.get(endpoint);
+      console.log('Billing summary response:', response.data);
       setBillingSummary(response.data);
     } catch (error) {
-      console.error('Failed to fetch billing summary');
+      console.error('Failed to fetch billing summary:', error);
+      console.error('Error details:', error.response?.data);
     }
   };
 
@@ -148,7 +192,11 @@ export default function TimeTrackingPage() {
 
   const startTimer = async () => {
     try {
-      const response = await api.post('/time-tracking/timer/start', timerForm);
+      const payload = {
+        ...timerForm,
+        caseId: timerForm.caseId || undefined,
+      };
+      const response = await api.post('/time-tracking/timer/start', payload);
       setActiveTimer(response.data);
       setOpenTimerDialog(false);
       setTimerForm({ caseId: '', description: '', type: 'OTHER', rate: 250 });
@@ -220,6 +268,40 @@ export default function TimeTrackingPage() {
       billable: true,
       rate: 250,
     });
+    setTimeInputMode('duration');
+    setDurationHours(1);
+    setDurationMinutes(0);
+  };
+
+  const formatLocalDateTime = (date: Date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  };
+
+  const setQuickDuration = (hours: number, minutes: number = 0) => {
+    setDurationHours(hours);
+    setDurationMinutes(minutes);
+    const now = new Date();
+    const endTime = new Date(now.getTime() + (hours * 60 + minutes) * 60000);
+    setForm({
+      ...form,
+      startTime: formatLocalDateTime(now),
+      endTime: formatLocalDateTime(endTime)
+    });
+  };
+
+  const handleDurationChange = () => {
+    const now = new Date();
+    const endTime = new Date(now.getTime() + (durationHours * 60 + durationMinutes) * 60000);
+    setForm({
+      ...form,
+      startTime: formatLocalDateTime(now),
+      endTime: formatLocalDateTime(endTime)
+    });
   };
 
   const handleEdit = (entry: TimeEntry) => {
@@ -227,12 +309,13 @@ export default function TimeTrackingPage() {
     setForm({
       caseId: entry.case?.id || '',
       description: entry.description,
-      startTime: new Date(entry.startTime).toISOString().slice(0, 16),
-      endTime: entry.endTime ? new Date(entry.endTime).toISOString().slice(0, 16) : '',
+      startTime: formatLocalDateTime(new Date(entry.startTime)),
+      endTime: entry.endTime ? formatLocalDateTime(new Date(entry.endTime)) : '',
       type: entry.type,
       billable: entry.billable,
       rate: entry.rate || 250,
     });
+    setTimeInputMode('datetime');
     setOpenDialog(true);
   };
 
@@ -276,6 +359,20 @@ export default function TimeTrackingPage() {
     setSelectedEntries(unbilledEntries.map(entry => entry.id));
   };
 
+  const handlePageChange = (event: React.ChangeEvent<unknown>, value: number) => {
+    setPage(value);
+  };
+
+  // Filter time entries by selected case
+  const filteredEntries = selectedCaseFilter 
+    ? timeEntries.filter(entry => entry.case?.id === selectedCaseFilter.id)
+    : timeEntries;
+
+  // Calculate pagination
+  const totalPages = Math.ceil(filteredEntries.length / entriesPerPage);
+  const startIndex = (page - 1) * entriesPerPage;
+  const paginatedEntries = filteredEntries.slice(startIndex, startIndex + entriesPerPage);
+
   const createInvoiceFromSelected = async () => {
     if (selectedEntries.length === 0) {
       toast.error('Please select time entries to invoice');
@@ -299,40 +396,62 @@ export default function TimeTrackingPage() {
   return (
     <RoleGuard allowedRoles={['PARALEGAL', 'ASSOCIATE', 'PARTNER']}>
       <Box sx={{ p: 3 }}>
-      {/* Billing Summary Cards */}
-      <Grid container spacing={2} sx={{ mb: 3 }}>
-        <Grid item xs={12} md={4}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" color="text.secondary">Unbilled</Typography>
-              <Typography variant="h4">${(billingSummary.unbilled?.amount || 0).toFixed(2)}</Typography>
-              <Typography variant="body2">{billingSummary.unbilled?.count || 0} entries</Typography>
-            </CardContent>
-          </Card>
+      {/* Billing Summary Cards - Only show for Partners on All Staff Time tab */}
+      {user?.role === 'PARTNER' && currentTab === 0 && (
+        <Grid container spacing={2} sx={{ mb: 3 }}>
+          <Grid item xs={12} md={6}>
+            <Card>
+              <CardContent>
+                <Typography variant="h6" color="text.secondary">Unbilled</Typography>
+                <Typography variant="h4">${(billingSummary.unbilled?.amount || 0).toFixed(2)}</Typography>
+                <Typography variant="body2">{billingSummary.unbilled?.count || 0} entries</Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+          <Grid item xs={12} md={6}>
+            <Card>
+              <CardContent>
+                <Typography variant="h6" color="warning.main">Billed</Typography>
+                <Typography variant="h4">${(billingSummary.billed?.amount || 0).toFixed(2)}</Typography>
+                <Typography variant="body2">{billingSummary.billed?.count || 0} entries</Typography>
+              </CardContent>
+            </Card>
+          </Grid>
         </Grid>
-        <Grid item xs={12} md={4}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" color="warning.main">Billed</Typography>
-              <Typography variant="h4">${(billingSummary.billed?.amount || 0).toFixed(2)}</Typography>
-              <Typography variant="body2">{billingSummary.billed?.count || 0} entries</Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid item xs={12} md={4}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" color="success.main">Paid</Typography>
-              <Typography variant="h4">${(billingSummary.paid?.amount || 0).toFixed(2)}</Typography>
-              <Typography variant="body2">{billingSummary.paid?.count || 0} entries</Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
+      )}
 
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
-        <Typography variant="h4">Time Tracking</Typography>
-        <Box sx={{ display: 'flex', gap: 2 }}>
+      {/* Tabs for Partners */}
+      {user?.role === 'PARTNER' && (
+        <Box sx={{ mb: 3 }}>
+          <Tabs value={currentTab} onChange={(_, newValue) => setCurrentTab(newValue)}>
+            <Tab label="All Staff Time" />
+            <Tab label="My Time" />
+          </Tabs>
+        </Box>
+      )}
+
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+        <Typography variant="h4">
+          {user?.role === 'PARTNER' ? (currentTab === 0 ? 'All Staff Time Tracking' : 'My Time Tracking') : 'Time Tracking'}
+        </Typography>
+        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+          <Autocomplete
+            options={cases}
+            getOptionLabel={(option) => option.caseName}
+            value={selectedCaseFilter}
+            onChange={(_, newValue) => setSelectedCaseFilter(newValue)}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                label="Filter by Case"
+                size="small"
+                placeholder="Type or select a case"
+              />
+            )}
+            sx={{ minWidth: 250 }}
+            clearOnEscape
+            blurOnSelect
+          />
           {activeTimer ? (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
               <Paper sx={{ p: 2, bgcolor: 'success.light', color: 'success.contrastText' }}>
@@ -421,6 +540,7 @@ export default function TimeTrackingPage() {
                 />
               </TableCell>
               <TableCell>Case</TableCell>
+              {user?.role === 'PARTNER' && currentTab === 0 && <TableCell>Staff Member</TableCell>}
               <TableCell>Description</TableCell>
               <TableCell>Type</TableCell>
               <TableCell>Start Time</TableCell>
@@ -432,7 +552,7 @@ export default function TimeTrackingPage() {
             </TableRow>
           </TableHead>
           <TableBody>
-            {timeEntries.map((entry) => (
+            {paginatedEntries.map((entry) => (
               <TableRow key={entry.id}>
                 <TableCell padding="checkbox">
                   <Checkbox
@@ -442,6 +562,19 @@ export default function TimeTrackingPage() {
                   />
                 </TableCell>
                 <TableCell>{entry.case?.caseName || '-'}</TableCell>
+                {user?.role === 'PARTNER' && currentTab === 0 && (
+                  <TableCell>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Typography variant="body2">{entry.user?.name || 'Unknown'}</Typography>
+                      <Chip 
+                        label={entry.user?.role || 'N/A'} 
+                        size="small" 
+                        variant="outlined"
+                        color={entry.user?.role === 'PARTNER' ? 'primary' : entry.user?.role === 'ASSOCIATE' ? 'secondary' : 'default'}
+                      />
+                    </Box>
+                  </TableCell>
+                )}
                 <TableCell>{entry.description}</TableCell>
                 <TableCell>{entry.type}</TableCell>
                 <TableCell>
@@ -472,6 +605,20 @@ export default function TimeTrackingPage() {
           </TableBody>
         </Table>
       </TableContainer>
+
+      {/* Pagination */}
+      {filteredEntries.length > entriesPerPage && (
+        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
+          <Pagination
+            count={totalPages}
+            page={page}
+            onChange={handlePageChange}
+            color="primary"
+            showFirstButton
+            showLastButton
+          />
+        </Box>
+      )}
 
       <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="md" fullWidth>
         <DialogTitle>{editingEntry ? 'Edit' : 'Add'} Time Entry</DialogTitle>
@@ -510,23 +657,75 @@ export default function TimeTrackingPage() {
                 </MenuItem>
               ))}
             </TextField>
-            <TextField
-              label="Start Time"
-              type="datetime-local"
-              value={form.startTime}
-              onChange={(e) => setForm({ ...form, startTime: e.target.value })}
-              fullWidth
-              required
-              InputLabelProps={{ shrink: true }}
-            />
-            <TextField
-              label="End Time"
-              type="datetime-local"
-              value={form.endTime}
-              onChange={(e) => setForm({ ...form, endTime: e.target.value })}
-              fullWidth
-              InputLabelProps={{ shrink: true }}
-            />
+            
+            <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
+              <Button
+                variant={timeInputMode === 'duration' ? 'contained' : 'outlined'}
+                onClick={() => setTimeInputMode('duration')}
+                size="small"
+              >
+                Duration
+              </Button>
+              <Button
+                variant={timeInputMode === 'datetime' ? 'contained' : 'outlined'}
+                onClick={() => setTimeInputMode('datetime')}
+                size="small"
+              >
+                Date & Time
+              </Button>
+            </Box>
+
+            {timeInputMode === 'duration' ? (
+              <>
+                <Box sx={{ display: 'flex', gap: 1, mb: 2, flexWrap: 'wrap' }}>
+                  <Button variant="outlined" size="small" onClick={() => setQuickDuration(0, 15)}>15m</Button>
+                  <Button variant="outlined" size="small" onClick={() => setQuickDuration(0, 30)}>30m</Button>
+                  <Button variant="outlined" size="small" onClick={() => setQuickDuration(1)}>1h</Button>
+                  <Button variant="outlined" size="small" onClick={() => setQuickDuration(2)}>2h</Button>
+                  <Button variant="outlined" size="small" onClick={() => setQuickDuration(4)}>4h</Button>
+                  <Button variant="outlined" size="small" onClick={() => setQuickDuration(8)}>8h</Button>
+                </Box>
+                <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+                  <TextField
+                    label="Hours"
+                    type="number"
+                    value={durationHours}
+                    onChange={(e) => {
+                      setDurationHours(Number(e.target.value));
+                      setTimeout(handleDurationChange, 100);
+                    }}
+                    inputProps={{ min: 0, max: 24 }}
+                    sx={{ width: 100 }}
+                  />
+                  <TextField
+                    label="Minutes"
+                    type="number"
+                    value={durationMinutes}
+                    onChange={(e) => {
+                      setDurationMinutes(Number(e.target.value));
+                      setTimeout(handleDurationChange, 100);
+                    }}
+                    inputProps={{ min: 0, max: 59 }}
+                    sx={{ width: 100 }}
+                  />
+                </Box>
+              </>
+            ) : (
+              <LocalizationProvider dateAdapter={AdapterDateFns}>
+                <DateTimePicker
+                  label="Start Time"
+                  value={form.startTime ? new Date(form.startTime) : null}
+                  onChange={(newValue) => setForm({ ...form, startTime: newValue ? newValue.toISOString().slice(0, 16) : '' })}
+                  slotProps={{ textField: { fullWidth: true, required: true } }}
+                />
+                <DateTimePicker
+                  label="End Time"
+                  value={form.endTime ? new Date(form.endTime) : null}
+                  onChange={(newValue) => setForm({ ...form, endTime: newValue ? newValue.toISOString().slice(0, 16) : '' })}
+                  slotProps={{ textField: { fullWidth: true } }}
+                />
+              </LocalizationProvider>
+            )}
             <TextField
               label="Hourly Rate"
               type="number"
@@ -549,20 +748,22 @@ export default function TimeTrackingPage() {
         <DialogTitle>Start Timer</DialogTitle>
         <DialogContent>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
-            <TextField
-              select
-              label="Case (optional)"
-              value={timerForm.caseId}
-              onChange={(e) => setTimerForm({ ...timerForm, caseId: e.target.value })}
+            <Autocomplete
+              options={cases}
+              getOptionLabel={(option) => option.caseName}
+              value={cases.find(c => c.id === timerForm.caseId) || null}
+              onChange={(_, newValue) => setTimerForm({ ...timerForm, caseId: newValue?.id || '' })}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="Case (optional)"
+                  placeholder="Select a case or leave empty"
+                />
+              )}
               fullWidth
-            >
-              <MenuItem value="">No case selected</MenuItem>
-              {cases.map((case_) => (
-                <MenuItem key={case_.id} value={case_.id}>
-                  {case_.caseName}
-                </MenuItem>
-              ))}
-            </TextField>
+              clearOnEscape
+              blurOnSelect
+            />
             <TextField
               label="Description"
               value={timerForm.description}

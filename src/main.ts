@@ -12,7 +12,7 @@ async function bootstrap() {
   app.use(compression());
 
   app.enableCors({
-    origin: 'http://localhost:3001',
+    origin: ['http://localhost:3000', 'http://localhost:3001'],
     credentials: true,
   });
 
@@ -26,6 +26,8 @@ async function bootstrap() {
     }),
   );
 
-  await app.listen(3000);
+  const port = 5000;
+  await app.listen(port);
+  console.log(`🚀 Server running on http://localhost:${port}`);
 }
 bootstrap();

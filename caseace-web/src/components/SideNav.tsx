@@ -21,13 +21,16 @@ import AnalyticsIcon from '@mui/icons-material/Analytics';
 import PeopleIcon from '@mui/icons-material/People';
 import TaskIcon from '@mui/icons-material/Task';
 import SmartToyIcon from '@mui/icons-material/SmartToy';
+import NotificationsIcon from '@mui/icons-material/Notifications';
 import LogoutIcon from '@mui/icons-material/Logout';
+import { Badge } from '@mui/material';
 import { Divider } from '@mui/material';
 import { useRouter } from 'next/navigation';
 import api from '@/lib/axios';
 import toast from 'react-hot-toast';
 import Image from 'next/image';
 import PrefetchLink from './PrefetchLinks';
+import { useNotificationStore } from '@/store/notificationStore';
 
 const drawerWidth = 240;
 
@@ -41,10 +44,15 @@ interface MenuItem {
 export default function SideNav() {
   const [userRole, setUserRole] = useState<string>('CLIENT');
   const router = useRouter();
+  const { unreadCount, getUnreadCount } = useNotificationStore();
 
   useEffect(() => {
     fetchUserProfile();
-  }, []);
+    getUnreadCount();
+    // Poll for unread count every 30 seconds
+    const interval = setInterval(getUnreadCount, 30000);
+    return () => clearInterval(interval);
+  }, [getUnreadCount]);
 
   const fetchUserProfile = async () => {
     try {
@@ -60,6 +68,16 @@ export default function SideNav() {
     { text: 'Cases', href: '/cases', icon: <GavelIcon />, roles: ['CLIENT', 'PARALEGAL', 'ASSOCIATE', 'PARTNER'] },
     { text: 'Appointments', href: '/appointments', icon: <EventIcon />, roles: ['CLIENT', 'PARALEGAL', 'ASSOCIATE', 'PARTNER'] },
     { text: 'Tasks', href: '/tasks', icon: <TaskIcon />, roles: ['PARALEGAL', 'ASSOCIATE', 'PARTNER'] },
+    { 
+      text: 'Notifications', 
+      href: '/notifications', 
+      icon: (
+        <Badge badgeContent={unreadCount} color="error" max={99}>
+          <NotificationsIcon />
+        </Badge>
+      ), 
+      roles: ['PARALEGAL', 'ASSOCIATE', 'PARTNER'] 
+    },
     { text: 'Time Tracking', href: '/time-tracking', icon: <AccessTimeIcon />, roles: ['PARALEGAL', 'ASSOCIATE', 'PARTNER'] },
     { text: 'Billing', href: '/billing', icon: <ReceiptIcon />, roles: ['CLIENT', 'PARTNER'] },
     { text: 'Legal Assistant', href: '/legal-assistant', icon: <SmartToyIcon />, roles: ['PARALEGAL', 'ASSOCIATE', 'PARTNER'] },

@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { UserRole, TaskStatus } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
 
@@ -12,7 +13,10 @@ interface AuthenticatedUser {
 
 @Injectable()
 export class TasksService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private notificationsService: NotificationsService,
+  ) {}
 
   async create(createTaskDto: CreateTaskDto, assigner: AuthenticatedUser) {
     const { caseId, assignedToId, status, ...taskData } = createTaskDto;
@@ -32,7 +36,26 @@ export class TasksService {
         assignedBy: { connect: { id: assigner.userId || assigner.sub } },
         assignedTo: { connect: { id: assignedToId } },
       },
+      include: {
+        case: { select: { caseName: true } },
+      },
     });
+    
+    // Send notification to assigned user
+    try {
+      await this.notificationsService.create({
+        type: 'TASK_ASSIGNMENT',
+        title: 'New Task Assignment',
+        message: `You have been assigned a new task: ${newTask.title}`,
+        recipientId: assignedToId,
+        taskId: newTask.id,
+        caseId,
+        priority: newTask.priority === 1 ? 'HIGH' : 'MEDIUM',
+      });
+    } catch (error) {
+      console.error('Failed to send task assignment notification:', error);
+    }
+    
     return newTask;
   }
 

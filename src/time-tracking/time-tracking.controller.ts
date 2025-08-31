@@ -26,6 +26,15 @@ export class TimeTrackingController {
     return this.timeTrackingService.findAll(req.user.sub, { caseId, status });
   }
 
+  @Get('all-staff')
+  findAllStaff(
+    @Request() req,
+    @Query('caseId') caseId?: string,
+    @Query('status') status?: TimeEntryStatus,
+  ) {
+    return this.timeTrackingService.findAllStaff(req.user.sub, { caseId, status });
+  }
+
   @Get('report')
   getTimeReport(
     @Request() req,
@@ -87,6 +96,26 @@ export class TimeTrackingController {
   ) {
     return this.timeTrackingService.getBillingSummary(req.user.sub, caseId);
   }
+
+  @Get('billing-summary/all-staff')
+  getAllStaffBillingSummary(
+    @Request() req,
+    @Query('caseId') caseId?: string,
+  ) {
+    return this.timeTrackingService.getAllStaffBillingSummary(req.user.sub, caseId);
+  }
+
+  @Get('test')
+  test() {
+    return { message: 'Backend is working', timestamp: new Date() };
+  }
+
+  @Get('health')
+  health() {
+    return { status: 'OK', port: 5000, timestamp: new Date() };
+  }
+
+
 
   @Patch('invoice-status')
   updateInvoiceStatus(

@@ -2,8 +2,8 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: 'http://localhost:3000', // The base URL of our NestJS backend
-  withCredentials: true, // <-- This is CRUCIAL!
+  baseURL: process.env.NODE_ENV === 'production' ? '/api' : 'http://localhost:5000',
+  withCredentials: true,
 });
 
 export default api;

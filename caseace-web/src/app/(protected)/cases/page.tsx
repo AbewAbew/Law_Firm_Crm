@@ -30,6 +30,7 @@ import {
   Select,
   MenuItem,
   Grid,
+  Pagination,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -76,6 +77,10 @@ export default function CasesPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [clientFilter, setClientFilter] = useState('');
+  
+  // Pagination states
+  const [page, setPage] = useState(1);
+  const casesPerPage = 10;
 
   // Create Case modal state
   const [openCreate, setOpenCreate] = useState(false);
@@ -211,12 +216,23 @@ export default function CasesPage() {
     }
 
     setFilteredCases(filtered);
+    setPage(1); // Reset to first page when filters change
   }, [cases, searchTerm, statusFilter, clientFilter]);
 
   const clearFilters = () => {
     setSearchTerm('');
     setStatusFilter('');
     setClientFilter('');
+    setPage(1);
+  };
+
+  // Calculate pagination
+  const totalPages = Math.ceil(filteredCases.length / casesPerPage);
+  const startIndex = (page - 1) * casesPerPage;
+  const paginatedCases = filteredCases.slice(startIndex, startIndex + casesPerPage);
+
+  const handlePageChange = (event: React.ChangeEvent<unknown>, value: number) => {
+    setPage(value);
   };
 
   const uniqueStatuses = [...new Set(cases.map(c => c.status))];
@@ -401,7 +417,7 @@ export default function CasesPage() {
               </TableRow>
             </TableHead>
             <TableBody>
-              {filteredCases.map((caseItem) => (
+              {paginatedCases.map((caseItem) => (
                 <TableRow key={caseItem.id} hover>
                   <TableCell 
                     component="th" 
@@ -463,6 +479,20 @@ export default function CasesPage() {
             </TableBody>
           </Table>
         </TableContainer>
+      )}
+
+      {/* Pagination */}
+      {!loading && !error && filteredCases.length > casesPerPage && (
+        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
+          <Pagination
+            count={totalPages}
+            page={page}
+            onChange={handlePageChange}
+            color="primary"
+            showFirstButton
+            showLastButton
+          />
+        </Box>
       )}
 
       {/* Create Case Modal */}

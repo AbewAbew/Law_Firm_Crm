@@ -20,6 +20,7 @@ import {
   MenuItem,
   Chip,
   IconButton,
+  Pagination,
 } from '@mui/material';
 import { Add, Edit, Delete } from '@mui/icons-material';
 import RoleGuard from '@/components/RoleGuard';
@@ -38,6 +39,8 @@ export default function UsersPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
   const [roleFilter, setRoleFilter] = useState<string>('ALL');
+  const [page, setPage] = useState(1);
+  const usersPerPage = 10;
   const [openDialog, setOpenDialog] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [form, setForm] = useState({
@@ -70,12 +73,22 @@ export default function UsersPage() {
 
   const handleRoleFilter = (selectedRole: string) => {
     setRoleFilter(selectedRole);
+    setPage(1); // Reset to first page when filter changes
     if (selectedRole === 'ALL') {
       setFilteredUsers(users);
     } else {
       setFilteredUsers(users.filter(user => user.role === selectedRole));
     }
   };
+
+  const handlePageChange = (event: React.ChangeEvent<unknown>, value: number) => {
+    setPage(value);
+  };
+
+  // Calculate pagination
+  const totalPages = Math.ceil(filteredUsers.length / usersPerPage);
+  const startIndex = (page - 1) * usersPerPage;
+  const paginatedUsers = filteredUsers.slice(startIndex, startIndex + usersPerPage);
 
   const handleSubmit = async () => {
     try {
@@ -184,7 +197,7 @@ export default function UsersPage() {
               </TableRow>
             </TableHead>
             <TableBody>
-              {filteredUsers.map((user) => (
+              {paginatedUsers.map((user) => (
                 <TableRow key={user.id}>
                   <TableCell>{user.name}</TableCell>
                   <TableCell>{user.email}</TableCell>
@@ -211,6 +224,20 @@ export default function UsersPage() {
             </TableBody>
           </Table>
         </TableContainer>
+
+        {/* Pagination */}
+        {filteredUsers.length > usersPerPage && (
+          <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
+            <Pagination
+              count={totalPages}
+              page={page}
+              onChange={handlePageChange}
+              color="primary"
+              showFirstButton
+              showLastButton
+            />
+          </Box>
+        )}
 
         <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="sm" fullWidth>
           <DialogTitle>{editingUser ? 'Edit User' : 'Add New User'}</DialogTitle>
