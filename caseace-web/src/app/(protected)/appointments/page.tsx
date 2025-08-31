@@ -135,7 +135,7 @@ export default function AppointmentsPage() {
     }
   };
 
-  const handleOpenCreate = (appointment: Appointment | null = null) => {
+  const handleOpenCreate = (appointment: Appointment | null = null, selectedDate?: Date) => {
     if (appointment) {
       setEditingAppointment(appointment);
       setForm({
@@ -147,11 +147,13 @@ export default function AppointmentsPage() {
       });
     } else {
       setEditingAppointment(null);
+      const startTime = selectedDate || new Date();
+      const endTime = new Date(startTime.getTime() + 60 * 60 * 1000);
       setForm({
         title: '',
         description: '',
-        startTime: new Date(),
-        endTime: new Date(Date.now() + 60 * 60 * 1000),
+        startTime,
+        endTime,
         attendeeIds: [],
       });
     }
@@ -290,6 +292,11 @@ export default function AppointmentsPage() {
                 const appointment = appointments.find(a => a.id === event.id);
                 if (appointment) {
                   handleOpenCreate(appointment);
+                }
+              }}
+              onDateSelect={(date) => {
+                if (userRole !== 'CLIENT') {
+                  handleOpenCreate(null, date);
                 }
               }}
             />

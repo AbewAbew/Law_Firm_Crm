@@ -29,9 +29,10 @@ interface AppointmentCalendarProps {
     attendees?: Array<{ user: { id: string; name: string | null } }>;
   }>;
   onEventClick?: (event: { id: string }) => void;
+  onDateSelect?: (date: Date) => void;
 }
 
-export default function AppointmentCalendar({ appointments, onEventClick }: AppointmentCalendarProps) {
+export default function AppointmentCalendar({ appointments, onEventClick, onDateSelect }: AppointmentCalendarProps) {
   const calendarEvents: AppointmentEvent[] = appointments.map((appt) => ({
     id: appt.id,
     title: appt.title,
@@ -49,6 +50,12 @@ export default function AppointmentCalendar({ appointments, onEventClick }: Appo
     }
   };
 
+  const handleDateClick = (selectInfo: any) => {
+    if (onDateSelect) {
+      onDateSelect(selectInfo.date);
+    }
+  };
+
   return (
     <FullCalendar
       plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
@@ -60,6 +67,7 @@ export default function AppointmentCalendar({ appointments, onEventClick }: Appo
       }}
       events={calendarEvents}
       eventClick={handleEventClick}
+      dateClick={handleDateClick}
       editable={true}
       selectable={true}
       selectMirror={true}
